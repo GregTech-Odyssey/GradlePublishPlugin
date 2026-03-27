@@ -80,8 +80,27 @@ abstract class GtoPublishCurseforgeTask : DefaultTask() {
         val versionsConn = URI("https://minecraft.curseforge.com/api/game/versions")
             .toURL().openConnection() as HttpURLConnection
         versionsConn.setRequestProperty("X-Api-Token", cfToken)
+        versionsConn.setRequestProperty("User-Agent", "GtoPublishPlugin")
         versionsConn.connectTimeout = 10000
         versionsConn.readTimeout = 10000
+
+        val versionsResponseCode = versionsConn.responseCode
+        if (versionsResponseCode != 200) {
+            val errorBody = versionsConn.errorStream?.bufferedReader()?.readText() ?: "unknown"
+            versionsConn.disconnect()
+            if (versionsResponseCode == 403) {
+                throw GradleException(
+                    "CurseForge API 返回 403 Forbidden，请检查 Token 是否正确且具有上传权限\n" +
+                    "CurseForge API returned 403 Forbidden. Verify your token is valid and has upload permissions.\n" +
+                    "Token 获取地址 / Get token at: https://www.curseforge.com/account/api-tokens\n" +
+                    "详情请参阅 / See: ${VersionChecker.DOCS_URL}"
+                )
+            }
+            throw GradleException(
+                "CurseForge 游戏版本 API 请求失败 / CurseForge game versions API failed ($versionsResponseCode): $errorBody\n" +
+                "详情请参阅 / See: ${VersionChecker.DOCS_URL}"
+            )
+        }
         val allVersionsText = versionsConn.inputStream.bufferedReader().readText()
         versionsConn.disconnect()
 
@@ -118,6 +137,7 @@ abstract class GtoPublishCurseforgeTask : DefaultTask() {
         val conn = URI(uploadUrl).toURL().openConnection() as HttpURLConnection
         conn.requestMethod = "POST"
         conn.setRequestProperty("X-Api-Token", cfToken)
+        conn.setRequestProperty("User-Agent", "GtoPublishPlugin")
         conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
         conn.doOutput = true
         conn.connectTimeout = 60000

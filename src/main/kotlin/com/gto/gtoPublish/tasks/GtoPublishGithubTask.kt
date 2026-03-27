@@ -110,13 +110,18 @@ abstract class GtoPublishGithubTask : DefaultTask() {
         val uploadUrl = match.groupValues[1].replace("{?name,label}", "")
         conn.disconnect()
 
-        // Upload JARs (exclude dev/sources/javadoc)
+        // Upload JARs — only current version (exclude dev/sources/javadoc)
+        val displayVer = VersionChecker.displayVersion(ver)
         val jars = libsDir.listFiles()?.filter {
             it.name.endsWith(".jar") &&
                 !it.name.contains("-dev") &&
                 !it.name.contains("-sources") &&
-                !it.name.contains("-javadoc")
+                !it.name.contains("-javadoc") &&
+                (it.name.contains(displayVer))
         } ?: emptyList()
+        if (jars.isEmpty()) {
+            throw GradleException("build/libs/ 下未找到匹配版本 $displayVer 的 JAR 文件 / No JAR matching version $displayVer found in build/libs/\n详情请参阅 / See: ${VersionChecker.DOCS_URL}")
+        }
 
         for (jar in jars) {
             logger.lifecycle("  Uploading ${jar.name} ...")
