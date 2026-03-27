@@ -96,13 +96,14 @@ abstract class GtoPublishCurseforgeTask : DefaultTask() {
 
         // Upload via multipart
         val boundary = "----GtoPublish${System.nanoTime()}"
+        val releaseType = VersionChecker.parseReleaseType(ver)
         val metadata = Gson().toJson(
             mapOf(
                 "changelog" to "Release $ver",
                 "changelogType" to "markdown",
                 "displayName" to "${archivesName.get()}-${ver}.jar",
                 "gameVersions" to versionIds,
-                "releaseType" to "release"
+                "releaseType" to releaseType
             )
         )
 

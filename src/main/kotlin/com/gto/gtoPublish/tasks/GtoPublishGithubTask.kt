@@ -73,13 +73,20 @@ abstract class GtoPublishGithubTask : DefaultTask() {
         conn.setRequestProperty("Content-Type", "application/json")
         conn.doOutput = true
 
+        val releaseType = VersionChecker.parseReleaseType(ver)
+        val isPreRelease = releaseType != "release"
+        val label = when (releaseType) {
+            "alpha" -> "[Alpha]"
+            "beta" -> "[Beta]"
+            else -> ""
+        }
         val body = Gson().toJson(
             mapOf(
                 "tag_name" to ver,
-                "name" to ver,
-                "body" to "Release $ver",
+                "name" to "${label} ${ver}".trim(),
+                "body" to "Release $ver ($releaseType)",
                 "draft" to false,
-                "prerelease" to false
+                "prerelease" to isPreRelease
             )
         )
         conn.outputStream.bufferedWriter(Charsets.UTF_8).use { it.write(body) }
