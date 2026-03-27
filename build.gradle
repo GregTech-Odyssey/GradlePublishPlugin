@@ -24,6 +24,22 @@ repositories {
     mavenCentral()
 }
 
+// 生成插件自身版本号资源文件，供运行时读取
+def generateVersionProps = tasks.register('generateVersionProperties') {
+    def outputDir = layout.buildDirectory.dir('generated/resources/plugin-version')
+    def versionValue = project.version.toString()
+    outputs.dir(outputDir)
+    doLast {
+        def propsFile = outputDir.get().file('gto-publish-version.properties').asFile
+        propsFile.parentFile.mkdirs()
+        propsFile.text = "version=${versionValue}\n"
+    }
+}
+sourceSets.main.resources.srcDir(tasks.named('generateVersionProperties').map {
+    layout.buildDirectory.dir('generated/resources/plugin-version').get()
+})
+tasks.named('processResources').configure { dependsOn(generateVersionProps) }
+
 dependencies {
     implementation gradleApi()
     implementation 'com.google.code.gson:gson:2.11.0'

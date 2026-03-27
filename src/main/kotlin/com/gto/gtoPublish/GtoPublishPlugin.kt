@@ -8,6 +8,18 @@ import org.gradle.api.plugins.BasePluginExtension
 class GtoPublishPlugin : Plugin<Project> {
 
     override fun apply(project: Project) {
+        // 检查插件是否有新版本
+        val pluginVersion = VersionChecker.getPluginVersion()
+        if (pluginVersion != null) {
+            VersionChecker.checkPluginUpdate(
+                "https://maven.gtodyssey.com/releases",
+                "com.gto",
+                "gtopublishgradleplugin",
+                pluginVersion,
+                project.logger
+            )
+        }
+
         val ext = project.extensions.create("gtoPublish", GtoPublishExtension::class.java)
 
         // 通过 gradle.properties 覆盖扩展默认值

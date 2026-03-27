@@ -205,4 +205,62 @@ object VersionChecker {
         }
         return digest.digest().joinToString("") { "%02x".format(it) }
     }
+
+    /**
+     * 读取插件自身版本号（从构建时生成的资源文件）
+     */
+    fun getPluginVersion(): String? {
+        return VersionChecker::class.java.classLoader
+            .getResourceAsStream("gto-publish-version.properties")
+            ?.bufferedReader()?.use { reader ->
+                val props = java.util.Properties()
+                props.load(reader)
+                props.getProperty("version")
+            }
+    }
+
+    /**
+     * 从 Maven 仓库的 maven-metadata.xml 获取插件最新版本号，
+     * 与当前版本比较，若不是最新则抛出异常，阻止所有插件功能。
+     */
+    fun checkPluginUpdate(
+        repoUrl: String,
+        group: String,
+        artifactId: String,
+        currentVersion: String,
+        logger: Logger
+    ) {
+        val groupPath = group.replace('.', '/')
+        val metadataUrl = "${repoUrl}/${groupPath}/${artifactId}/maven-metadata.xml"
+        try {
+            val conn = URI(metadataUrl).toURL().openConnection() as HttpURLConnection
+            conn.requestMethod = "GET"
+            conn.connectTimeout = 5000
+            conn.readTimeout = 5000
+            try {
+                if (conn.responseCode != 200) return
+                val xml = conn.inputStream.bufferedReader().readText()
+                // 解析 <release> 或 <latest> 标签
+                val latestVersion = Regex("""<release>([^<]+)</release>""").find(xml)?.groupValues?.get(1)
+                    ?: Regex("""<latest>([^<]+)</latest>""").find(xml)?.groupValues?.get(1)
+                    ?: return
+                if (latestVersion != currentVersion) {
+                    throw GradleException(
+                        "GTO Publish Plugin 版本已过期！\n" +
+                            "  当前版本: $currentVersion\n" +
+                            "  最新版本: $latestVersion\n\n" +
+                            "  所有发布功能已禁用，请先升级插件：\n" +
+                            "  在 build.gradle 中更新: id 'com.gto.gtopublishgradleplugin' version '$latestVersion'"
+                    )
+                }
+                logger.lifecycle("✓ GTO Publish Plugin 已是最新版本 ($currentVersion)")
+            } finally {
+                conn.disconnect()
+            }
+        } catch (e: GradleException) {
+            throw e
+        } catch (_: Exception) {
+            // 网络不可用时静默跳过，不影响正常构建
+        }
+    }
 }
