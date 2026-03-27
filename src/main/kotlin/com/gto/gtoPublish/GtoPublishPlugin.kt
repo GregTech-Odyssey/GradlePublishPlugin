@@ -64,6 +64,9 @@ class GtoPublishPlugin : Plugin<Project> {
                     project.findProperty("gtoCurseforgeToken")?.toString()
                 })
                 task.curseforgeProjectId.set(ext.curseforgeProjectId)
+                task.curseforgeModLoader.set(ext.curseforgeModLoader)
+                task.curseforgeJavaVersion.set(ext.curseforgeJavaVersion)
+                task.minecraftVersion.set(ext.minecraftVersion)
             }
 
             // --- Maven: 版本检查 + 发布 ---
@@ -154,7 +157,9 @@ class GtoPublishPlugin : Plugin<Project> {
                         project.findProperty("gtoCurseforgeToken")?.toString()
                     })
                     task.curseforgeProjectId.set(ext.curseforgeProjectId)
-                    task.additionalGameVersions.set(ext.curseforgeAdditionalGameVersions)
+                    task.minecraftVersion.set(ext.minecraftVersion)
+                    task.modLoader.set(ext.curseforgeModLoader)
+                    task.javaVersion.set(ext.curseforgeJavaVersion)
                     task.archivesName.set(project.provider {
                         project.extensions.getByType(BasePluginExtension::class.java).archivesName.get()
                     })
@@ -213,8 +218,14 @@ class GtoPublishPlugin : Plugin<Project> {
         project.findProperty("gtoCurseforgeProjectId")?.let {
             ext.curseforgeProjectId.set(it.toString())
         }
-        project.findProperty("gtoCurseforgeGameVersions")?.let {
-            ext.curseforgeAdditionalGameVersions.set(it.toString().split(",").map { s -> s.trim() })
+        project.findProperty("minecraft_version")?.let {
+            ext.minecraftVersion.set(it.toString())
+        }
+        project.findProperty("gtoCurseforgeModLoader")?.let {
+            ext.curseforgeModLoader.set(it.toString())
+        }
+        project.findProperty("gtoCurseforgeJavaVersion")?.let {
+            ext.curseforgeJavaVersion.set(it.toString())
         }
     }
 

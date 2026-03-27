@@ -5,7 +5,6 @@ import com.google.gson.reflect.TypeToken
 import com.gto.gtoPublish.VersionChecker
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
-import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputDirectory
@@ -28,7 +27,13 @@ abstract class GtoPublishCurseforgeTask : DefaultTask() {
     abstract val curseforgeProjectId: Property<String>
 
     @get:Input
-    abstract val additionalGameVersions: ListProperty<String>
+    abstract val minecraftVersion: Property<String>
+
+    @get:Input
+    abstract val modLoader: Property<String>
+
+    @get:Input
+    abstract val javaVersion: Property<String>
 
     @get:Input
     abstract val archivesName: Property<String>
@@ -55,10 +60,11 @@ abstract class GtoPublishCurseforgeTask : DefaultTask() {
         val ver = projectVersion.get()
         val cfToken = curseforgeToken.get()
         val cfProjectId = curseforgeProjectId.get()
-        val cfAdditionalVersions = additionalGameVersions.get()
+        val cfModLoader = modLoader.get()
+        val cfJavaVersion = javaVersion.get()
 
-        // 从版本号自动提取 MC 版本
-        val mcVersion = VersionChecker.parseMcVersion(ver)
+        // MC 版本从 minecraft_version 属性读取
+        val mcVersion = minecraftVersion.get()
 
         // Find main JAR
         val mainJar = libsDir.listFiles()?.filter {
@@ -81,9 +87,9 @@ abstract class GtoPublishCurseforgeTask : DefaultTask() {
         // 通过 CurseForge API 自动获取 MC 版本对应的 gameVersionId
         val mcGameVersionId = VersionChecker.fetchCurseForgeMinecraftVersionId(mcVersion, logger)
 
-        // 解析附加版本标签 (如 NeoForge, Java 25 等)
-        val allTags = cfAdditionalVersions
-        logger.lifecycle("  正在解析 CurseForge 附加版本标签: $allTags ...")
+        // 解析模组加载器和 Java 版本标签
+        val allTags = listOf(cfModLoader, cfJavaVersion)
+        logger.lifecycle("  正在解析 CurseForge 版本标签: 模组加载器=$cfModLoader, Java版本=$cfJavaVersion ...")
         val versionsConn = URI("https://minecraft.curseforge.com/api/game/versions")
             .toURL().openConnection() as HttpURLConnection
         versionsConn.setRequestProperty("X-Api-Token", cfToken)
@@ -126,14 +132,18 @@ abstract class GtoPublishCurseforgeTask : DefaultTask() {
             logger.lifecycle("  ✓ MC 版本 $mcVersion → gameVersionId $mcGameVersionId (via v1 API)")
         }
 
-        // 附加标签 (NeoForge, Java 25 等)
+        // 模组加载器和 Java 版本标签
         for (target in allTags) {
             val matched = allVersions.find { it["name"] == target }
             if (matched != null) {
                 versionIds += (matched["id"] as Double).toInt()
                 logger.lifecycle("  ✓ $target → ID ${versionIds.last()}")
             } else {
-                logger.warn("  ⚠ 无法解析 CurseForge 游戏版本标签: '$target'")
+                throw GradleException(
+                    "无法解析 CurseForge 游戏版本标签: '$target'\n" +
+                    "Failed to resolve CurseForge game version tag: '$target'\n" +
+                    "详情请参阅 / See: ${VersionChecker.DOCS_URL}"
+                )
             }
         }
         if (versionIds.isEmpty()) {

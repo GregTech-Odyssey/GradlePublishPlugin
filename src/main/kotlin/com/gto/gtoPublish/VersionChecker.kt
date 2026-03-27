@@ -12,44 +12,23 @@ object VersionChecker {
     const val DOCS_URL = "https://github.com/GregTech-Odyssey/GradlePublishPlugin"
 
     /**
-     * 版本格式: {mcVersion}-{modVersion}(-{releaseType})?
-     * mcVersion: 如 26.1, 1.12.2, 1.7.10 等 (至少两段数字)
-     * modVersion: x.x.x (恰好三段数字)
+     * 版本格式: x.x.x(-releaseType)?
+     * x.x.x: 恰好三段数字
      * releaseType: alpha / beta / release / 空
      *
-     * 示例: 26.1-1.0.0-release, 1.12.2-2.3.1-beta, 26.1-1.0.0
+     * 示例: 1.0.0-release, 2.3.1-beta, 1.0.0
      */
-    private val VERSION_REGEX = Regex("""^(.+)-(\d+\.\d+\.\d+)(-(alpha|beta|release))?$""")
-    private val MC_VERSION_REGEX = Regex("""^\d+(\.\d+)+$""")
+    private val VERSION_REGEX = Regex("""^(\d+\.\d+\.\d+)(-(alpha|beta|release))?$""")
 
     fun checkVersionFormat(version: String) {
-        val match = VERSION_REGEX.matchEntire(version)
-        if (match == null) {
+        if (!VERSION_REGEX.matches(version)) {
             throw GradleException(
                 "mod_version '${version}' 不是合法的版本号格式 / Invalid version format\n" +
-                    "要求格式 / Required: {mcVersion}-{modVersion}[-alpha|-beta|-release]\n" +
-                    "示例 / Examples: 26.1-1.0.0-release, 1.12.2-2.3.1-beta, 26.1-1.0.0\n" +
+                    "要求格式 / Required: x.x.x[-alpha|-beta|-release]\n" +
+                    "示例 / Examples: 1.0.0-release, 2.3.1-beta, 1.0.0\n" +
                     "详情请参阅 / See: $DOCS_URL"
             )
         }
-        val mcVersion = match.groupValues[1]
-        if (!mcVersion.matches(MC_VERSION_REGEX)) {
-            throw GradleException(
-                "MC 版本号 '${mcVersion}' 格式不合法 / Invalid Minecraft version format\n" +
-                    "要求至少两段数字，如 26.1, 1.12.2, 1.7.10\n" +
-                    "详情请参阅 / See: $DOCS_URL"
-            )
-        }
-    }
-
-    /** 从版本号中提取 MC 版本: 26.1-1.0.0-beta → 26.1 */
-    fun parseMcVersion(version: String): String {
-        return VERSION_REGEX.matchEntire(version)?.groupValues?.get(1) ?: version.substringBefore('-')
-    }
-
-    /** 从版本号中提取 mod 版本: 26.1-1.0.0-beta → 1.0.0 */
-    fun parseModVersion(version: String): String {
-        return VERSION_REGEX.matchEntire(version)?.groupValues?.get(2) ?: version
     }
 
     /**
@@ -58,15 +37,15 @@ object VersionChecker {
      */
     fun parseReleaseType(version: String): String {
         val match = VERSION_REGEX.matchEntire(version) ?: return "release"
-        val type = match.groupValues[4]
+        val type = match.groupValues[3]
         return if (type.isNotEmpty()) type else "release"
     }
 
     /**
      * 获取显示版本号：去除 -release 后缀
-     * 26.1-1.0.0-release → 26.1-1.0.0
-     * 26.1-1.0.0-beta    → 26.1-1.0.0-beta
-     * 26.1-1.0.0         → 26.1-1.0.0
+     * 1.0.0-release → 1.0.0
+     * 1.0.0-beta    → 1.0.0-beta
+     * 1.0.0         → 1.0.0
      */
     fun displayVersion(version: String): String {
         return version.removeSuffix("-release")

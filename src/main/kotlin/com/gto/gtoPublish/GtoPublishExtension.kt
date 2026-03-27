@@ -1,6 +1,5 @@
 package com.gto.gtoPublish
 
-import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
 
 abstract class GtoPublishExtension {
@@ -26,8 +25,14 @@ abstract class GtoPublishExtension {
     /** CurseForge 项目 ID */
     abstract val curseforgeProjectId: Property<String>
 
-    /** CurseForge 附加版本标签，如模组加载器、Java 版本等 (MC 版本从 mod_version 自动提取) */
-    abstract val curseforgeAdditionalGameVersions: ListProperty<String>
+    /** Minecraft 版本号，从项目的 minecraft_version 属性读取 */
+    abstract val minecraftVersion: Property<String>
+
+    /** CurseForge 模组加载器标签，如 NeoForge、Forge、Fabric 等 */
+    abstract val curseforgeModLoader: Property<String>
+
+    /** CurseForge Java 版本标签，如 Java 25、Java 21 等 */
+    abstract val curseforgeJavaVersion: Property<String>
 
     init {
         publishMaven.convention(true)
@@ -37,6 +42,8 @@ abstract class GtoPublishExtension {
         mavenRepoUrl.convention("https://maven.gtodyssey.com/releases")
         githubRepo.convention("")
         curseforgeProjectId.convention("")
-        curseforgeAdditionalGameVersions.convention(listOf("NeoForge", "Java 25"))
+        minecraftVersion.convention("")
+        curseforgeModLoader.convention("")
+        curseforgeJavaVersion.convention("")
     }
 }

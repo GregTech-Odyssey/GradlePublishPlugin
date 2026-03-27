@@ -52,6 +52,15 @@ abstract class GtoValidateTask : DefaultTask() {
     @get:Input @get:Optional
     abstract val curseforgeProjectId: Property<String>
 
+    @get:Input @get:Optional
+    abstract val minecraftVersion: Property<String>
+
+    @get:Input @get:Optional
+    abstract val curseforgeModLoader: Property<String>
+
+    @get:Input @get:Optional
+    abstract val curseforgeJavaVersion: Property<String>
+
     init {
         group = "gto publishing"
         description = "Validate credentials and version availability before publishing"
@@ -113,6 +122,24 @@ abstract class GtoValidateTask : DefaultTask() {
       ┌─ 设置方式: 在 gtoPublish {} 扩展块中添加:
       │    curseforgeProjectId = '123456'
       └─ 获取方式: CurseForge 项目页面 → About This Project → Project ID"""
+            }
+            if (!minecraftVersion.isPresent || minecraftVersion.get().isBlank()) {
+                errors += """Missing: minecraft_version
+      ┌─ 设置方式: 在项目的 gradle.properties 中添加:
+      │    minecraft_version=26.1
+      └─ 填写对应的 Minecraft 版本号"""
+            }
+            if (!curseforgeModLoader.isPresent || curseforgeModLoader.get().isBlank()) {
+                errors += """Missing: curseforgeModLoader
+      ┌─ 设置方式: 在 gtoPublish {} 扩展块中添加:
+      │    curseforgeModLoader = 'NeoForge'
+      └─ 可选值: NeoForge, Forge, Fabric, Quilt 等"""
+            }
+            if (!curseforgeJavaVersion.isPresent || curseforgeJavaVersion.get().isBlank()) {
+                errors += """Missing: curseforgeJavaVersion
+      ┌─ 设置方式: 在 gtoPublish {} 扩展块中添加:
+      │    curseforgeJavaVersion = 'Java 25'
+      └─ 可选值: Java 8, Java 17, Java 21, Java 25 等"""
             }
         }
 

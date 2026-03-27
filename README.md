@@ -38,6 +38,8 @@ publishing {
 
 3. **版本号格式**需符合 `x.x.x[-alpha|-beta|-release]`（见下方 [版本格式](#版本格式) 章节）
 
+4. **配置 `minecraft_version`**（启用 CurseForge 时必须）：在项目的 `gradle.properties` 中设置 `minecraft_version=26.1`
+
 ## 安装
 
 在消费项目的 `settings.gradle` 中配置 pluginManagement：
@@ -59,18 +61,17 @@ plugins {
 
 ## 版本格式
 
-项目版本必须符合 `{mcVersion}-{modVersion}[-alpha|-beta|-release]` 格式：
+项目版本必须符合 `x.x.x[-alpha|-beta|-release]` 格式：
 
-- `mcVersion`：有效的 Minecraft 版本号（至少两段数字），如 `26.1`、`1.12.2`、`1.7.10`
-- `modVersion`：模组版本号，格式为 `x.x.x`
+- `x.x.x`：三段数字版本号
 - 发布类型：`-alpha`、`-beta`、`-release` 或省略（省略等同于 `-release`）
 
 | 版本号示例 | 实际发布版本 | 类型 | GitHub 行为 | CurseForge `releaseType` |
 |---|---|---|---|---|
-| `26.1-1.0.0-alpha` | `26.1-1.0.0-alpha` | Alpha | Pre-release，名称前缀 `[Alpha]` | `alpha` |
-| `26.1-1.0.0-beta` | `26.1-1.0.0-beta` | Beta | Pre-release，名称前缀 `[Beta]` | `beta` |
-| `26.1-1.0.0-release` | `26.1-1.0.0` | Release | 正式发布 | `release` |
-| `26.1-1.0.0` | `26.1-1.0.0` | Release | 正式发布 | `release` |
+| `1.0.0-alpha` | `1.0.0-alpha` | Alpha | Pre-release，名称前缀 `[Alpha]` | `alpha` |
+| `1.0.0-beta` | `1.0.0-beta` | Beta | Pre-release，名称前缀 `[Beta]` | `beta` |
+| `1.0.0-release` | `1.0.0` | Release | 正式发布 | `release` |
+| `1.0.0` | `1.0.0` | Release | 正式发布 | `release` |
 
 > **注意**：`-release` 后缀会自动从所有发布产物的文件名和版本号中去除。
 
@@ -87,7 +88,8 @@ gtoPublish {
     mavenRepoUrl      = 'https://maven.gtodyssey.com/releases'  // 默认值
     githubRepo        = 'owner/repo-name'      // GitHub 仓库（启用 GitHub 发布时必填）
     curseforgeProjectId = '123456'               // CurseForge 项目 ID（启用 CurseForge 时必填）
-    curseforgeAdditionalGameVersions = ['NeoForge', 'Java 25']  // 附加版本标签（MC 版本从 mod_version 自动提取）
+    curseforgeModLoader = 'NeoForge'             // 模组加载器（启用 CurseForge 时必填，如 NeoForge, Forge, Fabric）
+    curseforgeJavaVersion = 'Java 25'            // Java 版本（启用 CurseForge 时必填，如 Java 8, Java 17, Java 21, Java 25）
 }
 ```
 
