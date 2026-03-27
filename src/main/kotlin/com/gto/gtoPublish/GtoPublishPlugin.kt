@@ -141,6 +141,7 @@ class GtoPublishPlugin : Plugin<Project> {
                     })
                     task.libsDir = project.layout.buildDirectory.dir("libs").get().asFile
                     task.mustRunAfter("gtoValidate", "assemble")
+                    if (enableMaven) task.mustRunAfter("gtoPublishMaven")
                 }
             }
 
@@ -160,6 +161,8 @@ class GtoPublishPlugin : Plugin<Project> {
                     task.projectGroup.set(project.provider { project.group.toString() })
                     task.libsDir = project.layout.buildDirectory.dir("libs").get().asFile
                     task.mustRunAfter("gtoValidate", "assemble")
+                    if (enableMaven) task.mustRunAfter("gtoPublishMaven")
+                    if (enableGithub) task.mustRunAfter("gtoPublishGithub")
                 }
             }
 
