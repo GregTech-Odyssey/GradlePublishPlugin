@@ -60,7 +60,7 @@ abstract class GtoPublishCurseforgeTask : DefaultTask() {
                 !it.name.contains("-dev") &&
                 !it.name.contains("-sources") &&
                 !it.name.contains("-javadoc")
-        }?.firstOrNull() ?: throw GradleException("build/libs/ 下未找到 JAR 文件")
+        }?.firstOrNull() ?: throw GradleException("build/libs/ 下未找到 JAR 文件 / No JAR found in build/libs/\n详情请参阅 / See: ${VersionChecker.DOCS_URL}")
 
         // 强制校验 Maven 制品存在且与本地一致
         VersionChecker.requireMavenArtifactConsistent(
@@ -91,7 +91,7 @@ abstract class GtoPublishCurseforgeTask : DefaultTask() {
             }
         }
         if (versionIds.isEmpty()) {
-            throw GradleException("无法解析任何 CurseForge 游戏版本 ID")
+            throw GradleException("无法解析任何 CurseForge 游戏版本 ID / Failed to resolve any CurseForge game version ID\n详情请参阅 / See: ${VersionChecker.DOCS_URL}")
         }
 
         // Upload via multipart
@@ -135,7 +135,7 @@ abstract class GtoPublishCurseforgeTask : DefaultTask() {
 
         if (conn.responseCode !in listOf(200, 201)) {
             val error = conn.errorStream?.bufferedReader()?.readText() ?: "unknown error"
-            throw GradleException("CurseForge 上传失败 (${conn.responseCode}): $error")
+            throw GradleException("CurseForge 上传失败 / CurseForge upload failed (${conn.responseCode}): $error\n详情请参阅 / See: ${VersionChecker.DOCS_URL}")
         }
         logger.lifecycle("\u2713 已上传至 CurseForge: ${mainJar.name}")
         conn.disconnect()

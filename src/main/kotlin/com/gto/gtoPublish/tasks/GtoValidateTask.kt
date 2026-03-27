@@ -118,10 +118,11 @@ abstract class GtoValidateTask : DefaultTask() {
 
         if (errors.isNotEmpty()) {
             throw GradleException(
-                "凭证校验失败:\n\n  " + errors.joinToString("\n\n  ") +
+                "凭证校验失败 / Credential validation failed:\n\n  " + errors.joinToString("\n\n  ") +
                     "\n\n提示: ~/.gradle/gradle.properties 位于:\n" +
                     "  Windows: C:\\Users\\你的用户名\\.gradle\\gradle.properties\n" +
-                    "  macOS/Linux: ~/.gradle/gradle.properties"
+                    "  macOS/Linux: ~/.gradle/gradle.properties\n\n" +
+                    "详情请参阅 / See: ${VersionChecker.DOCS_URL}"
             )
         }
         logger.lifecycle("\u2713 所有凭证已配置")
@@ -151,8 +152,9 @@ abstract class GtoValidateTask : DefaultTask() {
 
         if (versionErrors.isNotEmpty()) {
             throw GradleException(
-                "版本冲突:\n  - " + versionErrors.joinToString("\n  - ") +
-                    "\n\n请先修改 gradle.properties 中的 mod_version 再发布。"
+                "版本冲突 / Version conflict:\n  - " + versionErrors.joinToString("\n  - ") +
+                    "\n\n请先修改 gradle.properties 中的 mod_version 再发布。\n" +
+                    "详情请参阅 / See: ${VersionChecker.DOCS_URL}"
             )
         }
         logger.lifecycle("\u2713 版本 $ver 在所有目标平台可用")

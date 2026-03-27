@@ -93,13 +93,13 @@ abstract class GtoPublishGithubTask : DefaultTask() {
 
         if (conn.responseCode !in listOf(200, 201)) {
             val error = conn.errorStream?.bufferedReader()?.readText() ?: "unknown error"
-            throw GradleException("GitHub Release 创建失败 (${conn.responseCode}): $error")
+            throw GradleException("GitHub Release 创建失败 / Failed to create GitHub Release (${conn.responseCode}): $error\n详情请参阅 / See: ${VersionChecker.DOCS_URL}")
         }
 
         val responseText = conn.inputStream.bufferedReader().readText()
         val uploadUrlRegex = """"upload_url"\s*:\s*"([^"]+)"""".toRegex()
         val match = uploadUrlRegex.find(responseText)
-            ?: throw GradleException("无法从 GitHub 响应中解析 upload_url")
+            ?: throw GradleException("无法从 GitHub 响应中解析 upload_url / Failed to parse upload_url from GitHub response\n详情请参阅 / See: ${VersionChecker.DOCS_URL}")
         val uploadUrl = match.groupValues[1].replace("{?name,label}", "")
         conn.disconnect()
 

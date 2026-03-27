@@ -77,24 +77,54 @@ class GtoPublishPlugin : Plugin<Project> {
                     task.projectVersion.set(project.provider { project.version.toString() })
                 }
 
-                val candidates = project.tasks.names.filter {
-                    it.startsWith("publish") && it.contains(repoName.replaceFirstChar { c -> c.uppercase() })
+                // 查找匹配仓库名的 publish 任务（兼容 maven-publish 延迟注册）
+                val repoNameCapitalized = repoName.replaceFirstChar { c -> c.uppercase() }
+                val mavenPublishTask = project.tasks.names
+                    .filter { it.startsWith("publish") && it.contains(repoNameCapitalized) }
+                    .firstOrNull()
+                    ?: project.tasks.names.find { it == "publish" }
+
+                if (mavenPublishTask == null) {
+                    project.logger.error(
+                        "╔══════════════════════════════════════════════════════════════╗\n" +
+                        "║  GTO Publish Plugin — Maven 发布配置错误                     ║\n" +
+                        "╠══════════════════════════════════════════════════════════════╣\n" +
+                        "║  找不到名称包含 '$repoName' 的 publish 任务。                ║\n" +
+                        "║  No publish task found containing '$repoName'.               ║\n" +
+                        "║                                                              ║\n" +
+                        "║  请确保项目已应用 maven-publish 插件并配置了仓库:             ║\n" +
+                        "║  Make sure maven-publish plugin is applied with repository:  ║\n" +
+                        "║                                                              ║\n" +
+                        "║    plugins { id 'maven-publish' }                            ║\n" +
+                        "║    publishing {                                               ║\n" +
+                        "║      repositories {                                           ║\n" +
+                        "║        maven {                                                ║\n" +
+                        "║          name = '$repoName'                                  ║\n" +
+                        "║          url = '...'                                          ║\n" +
+                        "║        }                                                      ║\n" +
+                        "║      }                                                        ║\n" +
+                        "║    }                                                          ║\n" +
+                        "║                                                              ║\n" +
+                        "║  文档 / Docs: ${VersionChecker.DOCS_URL}\n" +
+                        "╚══════════════════════════════════════════════════════════════╝"
+                    )
+                    throw org.gradle.api.GradleException(
+                        "Maven publish task not found. Apply 'maven-publish' plugin and configure a repository named '$repoName'.\n" +
+                        "详情请参阅 / See: ${VersionChecker.DOCS_URL}"
+                    )
                 }
-                val mavenPublishTask = candidates.firstOrNull()
 
                 project.tasks.register("gtoPublishMaven") { task ->
                     task.group = "gto publishing"
                     task.description = "Publish to Maven repository ($repoName)"
                     task.dependsOn("gtoCheckMavenVersion")
-                    task.dependsOn(mavenPublishTask ?: "publish")
+                    task.dependsOn(mavenPublishTask)
                     task.mustRunAfter("gtoValidate", "assemble")
                 }
 
                 // 确保版本检查在实际发布之前
-                if (mavenPublishTask != null) {
-                    project.tasks.named(mavenPublishTask).configure {
-                        it.mustRunAfter("gtoCheckMavenVersion")
-                    }
+                project.tasks.named(mavenPublishTask).configure {
+                    it.mustRunAfter("gtoCheckMavenVersion")
                 }
             }
 

@@ -2,6 +2,42 @@
 
 可复用的多目标发布 Gradle 插件，支持 Maven、GitHub Release、CurseForge。
 
+> **项目地址 / Repository**: https://github.com/GregTech-Odyssey/GradlePublishPlugin
+
+## 前置要求 / Prerequisites
+
+消费项目必须满足以下条件才能使用此插件：
+
+1. **应用 `maven-publish` 插件** 并配置 Maven 仓库（名称需与 `gtoPublish.mavenRepoName` 一致）：
+
+```groovy
+plugins {
+    id 'maven-publish'
+}
+
+publishing {
+    repositories {
+        maven {
+            name = 'gtodysseyRepository'   // 必须与 gtoPublish.mavenRepoName 一致
+            url = 'https://maven.gtodyssey.com/releases'
+            credentials {
+                username = findProperty('gtodysseyRepositoryUsername') ?: ''
+                password = findProperty('gtodysseyRepositoryPassword') ?: ''
+            }
+        }
+    }
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+        }
+    }
+}
+```
+
+2. **配置凭证**（见下方 [凭证配置](#凭证配置) 章节）
+
+3. **版本号格式**需符合 `x.x.x[-alpha|-beta|-release]`（见下方 [版本格式](#版本格式) 章节）
+
 ## 安装
 
 在消费项目的 `settings.gradle` 中配置 pluginManagement：

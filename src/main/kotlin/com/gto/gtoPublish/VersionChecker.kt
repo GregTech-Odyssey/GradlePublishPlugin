@@ -9,13 +9,16 @@ import java.security.MessageDigest
 
 object VersionChecker {
 
+    const val DOCS_URL = "https://github.com/GregTech-Odyssey/GradlePublishPlugin"
+
     private val VERSION_REGEX = Regex("""\d+\.\d+\.\d+(-(alpha|beta|release))?""")
 
     fun checkVersionFormat(version: String) {
         if (!version.matches(VERSION_REGEX)) {
             throw GradleException(
-                "mod_version '${version}' 不是合法的版本号格式\n" +
-                    "要求格式: x.x.x-alpha 或 x.x.x-beta 或 x.x.x-release 或 x.x.x"
+                "mod_version '${version}' 不是合法的版本号格式 / Invalid version format\n" +
+                    "要求格式 / Required: x.x.x-alpha 或 x.x.x-beta 或 x.x.x-release 或 x.x.x\n" +
+                    "详情请参阅 / See: $DOCS_URL"
             )
         }
     }
@@ -55,7 +58,7 @@ object VersionChecker {
             conn.readTimeout = 10000
             try {
                 if (conn.responseCode == 200) {
-                    throw GradleException("Maven 仓库已存在版本 '${version}'\n请先修改 gradle.properties 中的 mod_version 再发布。")
+                    throw GradleException("Maven 仓库已存在版本 '${version}' / Version already exists in Maven\n请先修改 gradle.properties 中的 mod_version 再发布。\n详情请参阅 / See: $DOCS_URL")
                 }
             } finally {
                 conn.disconnect()
@@ -82,7 +85,7 @@ object VersionChecker {
             conn.readTimeout = 10000
             try {
                 if (conn.responseCode == 200) {
-                    throw GradleException("GitHub Release '${version}' 已存在\n请先修改 gradle.properties 中的 mod_version 再发布。")
+                    throw GradleException("GitHub Release '${version}' 已存在 / Release already exists\n请先修改 gradle.properties 中的 mod_version 再发布。\n详情请参阅 / See: $DOCS_URL")
                 }
             } finally {
                 conn.disconnect()
@@ -120,9 +123,10 @@ object VersionChecker {
             try {
                 if (headConn.responseCode != 200) {
                     throw GradleException(
-                        "Maven 仓库中不存在版本 '${version}' 的制品\n" +
+                        "Maven 仓库中不存在版本 '${version}' 的制品 / Artifact not found in Maven\n" +
                             "  URL: $jarUrl\n" +
-                            "  请先执行 gtoPublishMaven 将制品发布到 Maven 后，再发布到其他平台。"
+                            "  请先执行 gtoPublishMaven 将制品发布到 Maven 后，再发布到其他平台。\n" +
+                            "  详情请参阅 / See: $DOCS_URL"
                     )
                 }
             } finally {
@@ -131,7 +135,7 @@ object VersionChecker {
         } catch (e: GradleException) {
             throw e
         } catch (e: Exception) {
-            throw GradleException("无法连接 Maven 仓库校验制品: ${e.message}")
+            throw GradleException("无法连接 Maven 仓库校验制品 / Cannot connect to Maven: ${e.message}\n详情请参阅 / See: $DOCS_URL")
         }
 
         // 2. 下载远程 SHA-1
@@ -156,7 +160,7 @@ object VersionChecker {
         } catch (e: GradleException) {
             throw e
         } catch (e: Exception) {
-            throw GradleException("无法从 Maven 仓库下载 SHA-1 校验信息: ${e.message}")
+            throw GradleException("无法从 Maven 仓库下载 SHA-1 校验信息 / Failed to download SHA-1: ${e.message}\n详情请参阅 / See: $DOCS_URL")
         }
 
         // 3. 计算本地 JAR 的 SHA-1
@@ -166,10 +170,11 @@ object VersionChecker {
 
         if (!localSha1.equals(remoteSha1, ignoreCase = true)) {
             throw GradleException(
-                "本地 JAR 与 Maven 仓库中的制品 SHA-1 不一致！\n" +
-                    "  本地:  $localSha1\n" +
-                    "  Maven: $remoteSha1\n" +
-                    "  请确保使用与 Maven 发布时相同的构建产物。"
+                "本地 JAR 与 Maven 仓库中的制品 SHA-1 不一致！ / SHA-1 mismatch\n" +
+                    "  本地 / Local:  $localSha1\n" +
+                    "  Maven:         $remoteSha1\n" +
+                    "  请确保使用与 Maven 发布时相同的构建产物。\n" +
+                    "  详情请参阅 / See: $DOCS_URL"
             )
         }
         logger.lifecycle("  \u2713 SHA-1 校验通过，本地制品与 Maven 一致")
@@ -259,6 +264,8 @@ object VersionChecker {
                             "║                                                              ║\n" +
                             "║  修改 build.gradle / Update build.gradle:                    ║\n" +
                             "║  id 'com.gto.gtopublishgradleplugin' version '$latestVersion'\n" +
+                            "║                                                              ║\n" +
+                            "║  文档 / Docs: $DOCS_URL\n" +
                             "║                                                              ║\n" +
                             "╚══════════════════════════════════════════════════════════════╝"
                     )
