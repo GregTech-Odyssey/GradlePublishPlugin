@@ -11,35 +11,114 @@ object VersionChecker {
 
     const val DOCS_URL = "https://github.com/GregTech-Odyssey/GradlePublishPlugin"
 
-    private val VERSION_REGEX = Regex("""\d+\.\d+\.\d+(-(alpha|beta|release))?""")
+    /**
+     * 版本格式: {mcVersion}-{modVersion}(-{releaseType})?
+     * mcVersion: 如 26.1, 1.12.2, 1.7.10 等 (至少两段数字)
+     * modVersion: x.x.x (恰好三段数字)
+     * releaseType: alpha / beta / release / 空
+     *
+     * 示例: 26.1-1.0.0-release, 1.12.2-2.3.1-beta, 26.1-1.0.0
+     */
+    private val VERSION_REGEX = Regex("""^(.+)-(\d+\.\d+\.\d+)(-(alpha|beta|release))?$""")
+    private val MC_VERSION_REGEX = Regex("""^\d+(\.\d+)+$""")
 
     fun checkVersionFormat(version: String) {
-        if (!version.matches(VERSION_REGEX)) {
+        val match = VERSION_REGEX.matchEntire(version)
+        if (match == null) {
             throw GradleException(
                 "mod_version '${version}' 不是合法的版本号格式 / Invalid version format\n" +
-                    "要求格式 / Required: x.x.x-alpha 或 x.x.x-beta 或 x.x.x-release 或 x.x.x\n" +
+                    "要求格式 / Required: {mcVersion}-{modVersion}[-alpha|-beta|-release]\n" +
+                    "示例 / Examples: 26.1-1.0.0-release, 1.12.2-2.3.1-beta, 26.1-1.0.0\n" +
+                    "详情请参阅 / See: $DOCS_URL"
+            )
+        }
+        val mcVersion = match.groupValues[1]
+        if (!mcVersion.matches(MC_VERSION_REGEX)) {
+            throw GradleException(
+                "MC 版本号 '${mcVersion}' 格式不合法 / Invalid Minecraft version format\n" +
+                    "要求至少两段数字，如 26.1, 1.12.2, 1.7.10\n" +
                     "详情请参阅 / See: $DOCS_URL"
             )
         }
     }
 
+    /** 从版本号中提取 MC 版本: 26.1-1.0.0-beta → 26.1 */
+    fun parseMcVersion(version: String): String {
+        return VERSION_REGEX.matchEntire(version)?.groupValues?.get(1) ?: version.substringBefore('-')
+    }
+
+    /** 从版本号中提取 mod 版本: 26.1-1.0.0-beta → 1.0.0 */
+    fun parseModVersion(version: String): String {
+        return VERSION_REGEX.matchEntire(version)?.groupValues?.get(2) ?: version
+    }
+
     /**
      * 从版本号中解析发布类型: alpha / beta / release
-     * 无后缀的 x.x.x 视为 release
+     * 无后缀视为 release
      */
     fun parseReleaseType(version: String): String {
-        return if (version.contains('-')) version.substringAfterLast('-') else "release"
+        val match = VERSION_REGEX.matchEntire(version) ?: return "release"
+        val type = match.groupValues[4]
+        return if (type.isNotEmpty()) type else "release"
     }
 
     /**
      * 获取显示版本号：去除 -release 后缀
-     * 1.0.0-release → 1.0.0
-     * 1.0.0-alpha   → 1.0.0-alpha
-     * 1.0.0-beta    → 1.0.0-beta
-     * 1.0.0         → 1.0.0
+     * 26.1-1.0.0-release → 26.1-1.0.0
+     * 26.1-1.0.0-beta    → 26.1-1.0.0-beta
+     * 26.1-1.0.0         → 26.1-1.0.0
      */
     fun displayVersion(version: String): String {
         return version.removeSuffix("-release")
+    }
+
+    /**
+     * 通过 CurseForge API 验证 MC 版本号是否有效。
+     * 返回该版本在 CurseForge 上传 API 中对应的 game version ID。
+     */
+    fun fetchCurseForgeMinecraftVersionId(mcVersion: String, logger: Logger): Int {
+        val apiUrl = "https://api.curseforge.com/v1/minecraft/version"
+        logger.lifecycle("  正在从 CurseForge API 验证 MC 版本: $mcVersion ...")
+        val conn = URI(apiUrl).toURL().openConnection() as HttpURLConnection
+        conn.setRequestProperty("User-Agent", "GtoPublishPlugin")
+        conn.connectTimeout = 10000
+        conn.readTimeout = 10000
+        try {
+            if (conn.responseCode != 200) {
+                throw GradleException(
+                    "CurseForge MC 版本 API 请求失败 / CurseForge MC version API failed (${conn.responseCode})\n" +
+                        "详情请参阅 / See: $DOCS_URL"
+                )
+            }
+            val json = conn.inputStream.bufferedReader().readText()
+            // 响应格式: {"data":[{"id":101,"gameVersionId":15933,"versionString":"26.1",...}, ...]}
+            val dataRegex = Regex(""""versionString"\s*:\s*"([^"]+)"[^}]*?"gameVersionId"\s*:\s*(\d+)""")
+            // 也尝试反向字段顺序
+            val dataRegex2 = Regex(""""gameVersionId"\s*:\s*(\d+)[^}]*?"versionString"\s*:\s*"([^"]+)"""")
+
+            for (match in dataRegex.findAll(json)) {
+                if (match.groupValues[1] == mcVersion) {
+                    val gameVersionId = match.groupValues[2].toInt()
+                    logger.lifecycle("  ✓ MC 版本 $mcVersion 有效 (CurseForge gameVersionId: $gameVersionId)")
+                    return gameVersionId
+                }
+            }
+            for (match in dataRegex2.findAll(json)) {
+                if (match.groupValues[2] == mcVersion) {
+                    val gameVersionId = match.groupValues[1].toInt()
+                    logger.lifecycle("  ✓ MC 版本 $mcVersion 有效 (CurseForge gameVersionId: $gameVersionId)")
+                    return gameVersionId
+                }
+            }
+
+            throw GradleException(
+                "MC 版本 '$mcVersion' 在 CurseForge 上不存在 / MC version not found on CurseForge\n" +
+                    "请检查 mod_version 中的 MC 版本号是否正确。\n" +
+                    "详情请参阅 / See: $DOCS_URL"
+            )
+        } finally {
+            conn.disconnect()
+        }
     }
 
     fun checkMavenVersionNotExists(

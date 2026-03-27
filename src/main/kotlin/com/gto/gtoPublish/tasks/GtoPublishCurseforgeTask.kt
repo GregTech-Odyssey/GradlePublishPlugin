@@ -28,7 +28,7 @@ abstract class GtoPublishCurseforgeTask : DefaultTask() {
     abstract val curseforgeProjectId: Property<String>
 
     @get:Input
-    abstract val gameVersions: ListProperty<String>
+    abstract val additionalGameVersions: ListProperty<String>
 
     @get:Input
     abstract val archivesName: Property<String>
@@ -55,7 +55,10 @@ abstract class GtoPublishCurseforgeTask : DefaultTask() {
         val ver = projectVersion.get()
         val cfToken = curseforgeToken.get()
         val cfProjectId = curseforgeProjectId.get()
-        val cfGameVersions = gameVersions.get()
+        val cfAdditionalVersions = additionalGameVersions.get()
+
+        // 从版本号自动提取 MC 版本
+        val mcVersion = VersionChecker.parseMcVersion(ver)
 
         // Find main JAR
         val mainJar = libsDir.listFiles()?.filter {
@@ -75,8 +78,12 @@ abstract class GtoPublishCurseforgeTask : DefaultTask() {
             )
         }
 
-        // Resolve game version IDs
-        logger.lifecycle("  正在解析 CurseForge 游戏版本: $cfGameVersions...")
+        // 通过 CurseForge API 自动获取 MC 版本对应的 gameVersionId
+        val mcGameVersionId = VersionChecker.fetchCurseForgeMinecraftVersionId(mcVersion, logger)
+
+        // 解析附加版本标签 (如 NeoForge, Java 25 等)
+        val allTags = cfAdditionalVersions
+        logger.lifecycle("  正在解析 CurseForge 附加版本标签: $allTags ...")
         val versionsConn = URI("https://minecraft.curseforge.com/api/game/versions")
             .toURL().openConnection() as HttpURLConnection
         versionsConn.setRequestProperty("X-Api-Token", cfToken)
@@ -107,13 +114,26 @@ abstract class GtoPublishCurseforgeTask : DefaultTask() {
         val listType = object : TypeToken<List<Map<String, Any>>>() {}.type
         val allVersions: List<Map<String, Any>> = Gson().fromJson(allVersionsText, listType)
 
+        // MC 版本 ID (从上传 API 的版本列表中查找)
         val versionIds = mutableListOf<Int>()
-        for (target in cfGameVersions) {
+        val mcMatched = allVersions.find { it["name"] == mcVersion }
+        if (mcMatched != null) {
+            versionIds += (mcMatched["id"] as Double).toInt()
+            logger.lifecycle("  ✓ MC 版本 $mcVersion → ID ${versionIds.last()}")
+        } else {
+            // 使用 CurseForge v1 API 返回的 gameVersionId 作为后备
+            versionIds += mcGameVersionId
+            logger.lifecycle("  ✓ MC 版本 $mcVersion → gameVersionId $mcGameVersionId (via v1 API)")
+        }
+
+        // 附加标签 (NeoForge, Java 25 等)
+        for (target in allTags) {
             val matched = allVersions.find { it["name"] == target }
             if (matched != null) {
                 versionIds += (matched["id"] as Double).toInt()
+                logger.lifecycle("  ✓ $target → ID ${versionIds.last()}")
             } else {
-                logger.warn("  \u26A0 无法解析 CurseForge 游戏版本: '$target'")
+                logger.warn("  ⚠ 无法解析 CurseForge 游戏版本标签: '$target'")
             }
         }
         if (versionIds.isEmpty()) {

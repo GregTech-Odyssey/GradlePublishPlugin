@@ -154,7 +154,7 @@ class GtoPublishPlugin : Plugin<Project> {
                         project.findProperty("gtoCurseforgeToken")?.toString()
                     })
                     task.curseforgeProjectId.set(ext.curseforgeProjectId)
-                    task.gameVersions.set(ext.curseforgeGameVersions)
+                    task.additionalGameVersions.set(ext.curseforgeAdditionalGameVersions)
                     task.archivesName.set(project.provider {
                         project.extensions.getByType(BasePluginExtension::class.java).archivesName.get()
                     })
@@ -214,7 +214,7 @@ class GtoPublishPlugin : Plugin<Project> {
             ext.curseforgeProjectId.set(it.toString())
         }
         project.findProperty("gtoCurseforgeGameVersions")?.let {
-            ext.curseforgeGameVersions.set(it.toString().split(",").map { s -> s.trim() })
+            ext.curseforgeAdditionalGameVersions.set(it.toString().split(",").map { s -> s.trim() })
         }
     }
 

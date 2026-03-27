@@ -26,8 +26,8 @@ abstract class GtoPublishExtension {
     /** CurseForge 项目 ID */
     abstract val curseforgeProjectId: Property<String>
 
-    /** CurseForge 游戏版本列表 (默认 ['26.1', 'NeoForge', 'Java 25']) */
-    abstract val curseforgeGameVersions: ListProperty<String>
+    /** CurseForge 附加版本标签，如模组加载器、Java 版本等 (MC 版本从 mod_version 自动提取) */
+    abstract val curseforgeAdditionalGameVersions: ListProperty<String>
 
     init {
         publishMaven.convention(true)
@@ -37,6 +37,6 @@ abstract class GtoPublishExtension {
         mavenRepoUrl.convention("https://maven.gtodyssey.com/releases")
         githubRepo.convention("")
         curseforgeProjectId.convention("")
-        curseforgeGameVersions.convention(listOf("26.1", "NeoForge", "Java 25"))
+        curseforgeAdditionalGameVersions.convention(listOf("NeoForge", "Java 25"))
     }
 }
