@@ -140,6 +140,7 @@ class GtoPublishPlugin : Plugin<Project> {
                         project.extensions.getByType(BasePluginExtension::class.java).archivesName.get()
                     })
                     task.libsDir = project.layout.buildDirectory.dir("libs").get().asFile
+                    task.skipMavenConsistencyCheck.set(enableMaven)
                     task.mustRunAfter("gtoValidate", "assemble")
                     if (enableMaven) task.mustRunAfter("gtoPublishMaven")
                 }
@@ -160,6 +161,7 @@ class GtoPublishPlugin : Plugin<Project> {
                     task.mavenRepoUrl.set(ext.mavenRepoUrl)
                     task.projectGroup.set(project.provider { project.group.toString() })
                     task.libsDir = project.layout.buildDirectory.dir("libs").get().asFile
+                    task.skipMavenConsistencyCheck.set(enableMaven)
                     task.mustRunAfter("gtoValidate", "assemble")
                     if (enableMaven) task.mustRunAfter("gtoPublishMaven")
                     if (enableGithub) task.mustRunAfter("gtoPublishGithub")

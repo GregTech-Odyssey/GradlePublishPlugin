@@ -137,6 +137,8 @@ GitHub Token 也支持环境变量 `GH_TOKEN` 或 `GITHUB_TOKEN`。
 ```
 
 > **推荐发布顺序**：Maven → GitHub → CurseForge。GitHub 和 CurseForge 发布前会自动校验本地 JAR 与 Maven 仓库中产物的 SHA-1 一致性，因此 Maven 必须先完成发布。
+>
+> **一键发布说明**：使用 `gtoPublish` 且同时启用了 Maven 时，GitHub 和 CurseForge 任务会自动跳过 Maven SHA-1 一致性校验，因为 Maven 制品已在同一次构建中发布，而部分构建工具（如 NeoForge）会产生非确定性 JAR，重新构建后 SHA-1 会不同。单独执行 `gtoPublishGithub` 或 `gtoPublishCurseforge` 时仍会进行校验。
 
 ## 注册的 Task
 

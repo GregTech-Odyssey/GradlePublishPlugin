@@ -39,6 +39,9 @@ abstract class GtoPublishCurseforgeTask : DefaultTask() {
     @get:Input
     abstract val projectGroup: Property<String>
 
+    @get:Input
+    abstract val skipMavenConsistencyCheck: Property<Boolean>
+
     @get:InputDirectory
     lateinit var libsDir: File
 
@@ -62,11 +65,15 @@ abstract class GtoPublishCurseforgeTask : DefaultTask() {
                 !it.name.contains("-javadoc")
         }?.firstOrNull() ?: throw GradleException("build/libs/ 下未找到 JAR 文件 / No JAR found in build/libs/\n详情请参阅 / See: ${VersionChecker.DOCS_URL}")
 
-        // 强制校验 Maven 制品存在且与本地一致
-        VersionChecker.requireMavenArtifactConsistent(
-            mavenRepoUrl.get(), projectGroup.get(), archivesName.get(),
-            ver, mainJar, logger
-        )
+        // 强制校验 Maven 制品存在且与本地一致（一键流中 Maven 刚发布则跳过）
+        if (skipMavenConsistencyCheck.getOrElse(false)) {
+            logger.lifecycle("  ⏭ 跳过 Maven SHA-1 校验（Maven 已在本次构建中发布） / Skipping Maven SHA-1 check (published in same build)")
+        } else {
+            VersionChecker.requireMavenArtifactConsistent(
+                mavenRepoUrl.get(), projectGroup.get(), archivesName.get(),
+                ver, mainJar, logger
+            )
+        }
 
         // Resolve game version IDs
         logger.lifecycle("  正在解析 CurseForge 游戏版本: $cfGameVersions...")

@@ -33,6 +33,9 @@ abstract class GtoPublishGithubTask : DefaultTask() {
     @get:Input
     abstract val archivesName: Property<String>
 
+    @get:Input
+    abstract val skipMavenConsistencyCheck: Property<Boolean>
+
     @get:InputDirectory
     lateinit var libsDir: File
 
@@ -50,18 +53,22 @@ abstract class GtoPublishGithubTask : DefaultTask() {
         // 发布前强制检查版本是否已存在
         VersionChecker.checkGithubReleaseNotExists(ghRepo, ghToken, ver, logger)
 
-        // 强制校验 Maven 制品存在且与本地一致
-        val jarsForCheck = libsDir.listFiles()?.filter {
-            it.name.endsWith(".jar") &&
-                !it.name.contains("-dev") &&
-                !it.name.contains("-sources") &&
-                !it.name.contains("-javadoc")
-        } ?: emptyList()
-        if (jarsForCheck.isNotEmpty()) {
-            VersionChecker.requireMavenArtifactConsistent(
-                mavenRepoUrl.get(), projectGroup.get(), archivesName.get(),
-                ver, jarsForCheck.first(), logger
-            )
+        // 强制校验 Maven 制品存在且与本地一致（一键流中 Maven 刚发布则跳过）
+        if (skipMavenConsistencyCheck.getOrElse(false)) {
+            logger.lifecycle("  ⏭ 跳过 Maven SHA-1 校验（Maven 已在本次构建中发布） / Skipping Maven SHA-1 check (published in same build)")
+        } else {
+            val jarsForCheck = libsDir.listFiles()?.filter {
+                it.name.endsWith(".jar") &&
+                    !it.name.contains("-dev") &&
+                    !it.name.contains("-sources") &&
+                    !it.name.contains("-javadoc")
+            } ?: emptyList()
+            if (jarsForCheck.isNotEmpty()) {
+                VersionChecker.requireMavenArtifactConsistent(
+                    mavenRepoUrl.get(), projectGroup.get(), archivesName.get(),
+                    ver, jarsForCheck.first(), logger
+                )
+            }
         }
 
         // Create release
