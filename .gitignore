@@ -1,0 +1,14 @@
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+*.iml
+*.ipr
+*.iws
+.idea/
+
+.classpath
+.project
+.settings/
+
+local.properties

@@ -1,0 +1,142 @@
+package com.gto.gtoPublish.tasks
+
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+import com.gto.gtoPublish.VersionChecker
+import org.gradle.api.DefaultTask
+import org.gradle.api.GradleException
+import org.gradle.api.provider.ListProperty
+import org.gradle.api.provider.Property
+import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.InputDirectory
+import org.gradle.api.tasks.TaskAction
+import java.io.File
+import java.io.OutputStreamWriter
+import java.io.PrintWriter
+import java.net.HttpURLConnection
+import java.net.URI
+
+abstract class GtoPublishCurseforgeTask : DefaultTask() {
+
+    @get:Input
+    abstract val projectVersion: Property<String>
+
+    @get:Input
+    abstract val curseforgeToken: Property<String>
+
+    @get:Input
+    abstract val curseforgeProjectId: Property<String>
+
+    @get:Input
+    abstract val gameVersions: ListProperty<String>
+
+    @get:Input
+    abstract val archivesName: Property<String>
+
+    @get:Input
+    abstract val mavenRepoUrl: Property<String>
+
+    @get:Input
+    abstract val projectGroup: Property<String>
+
+    @get:InputDirectory
+    lateinit var libsDir: File
+
+    init {
+        group = "gto publishing"
+        description = "Upload JAR to CurseForge"
+    }
+
+    @TaskAction
+    fun publish() {
+        val ver = projectVersion.get()
+        val cfToken = curseforgeToken.get()
+        val cfProjectId = curseforgeProjectId.get()
+        val cfGameVersions = gameVersions.get()
+
+        // Find main JAR
+        val mainJar = libsDir.listFiles()?.filter {
+            it.name.endsWith(".jar") &&
+                !it.name.contains("-dev") &&
+                !it.name.contains("-sources") &&
+                !it.name.contains("-javadoc")
+        }?.firstOrNull() ?: throw GradleException("build/libs/ 下未找到 JAR 文件")
+
+        // 强制校验 Maven 制品存在且与本地一致
+        VersionChecker.requireMavenArtifactConsistent(
+            mavenRepoUrl.get(), projectGroup.get(), archivesName.get(),
+            ver, mainJar, logger
+        )
+
+        // Resolve game version IDs
+        logger.lifecycle("  正在解析 CurseForge 游戏版本: $cfGameVersions...")
+        val versionsConn = URI("https://minecraft.curseforge.com/api/game/versions")
+            .toURL().openConnection() as HttpURLConnection
+        versionsConn.setRequestProperty("X-Api-Token", cfToken)
+        versionsConn.connectTimeout = 10000
+        versionsConn.readTimeout = 10000
+        val allVersionsText = versionsConn.inputStream.bufferedReader().readText()
+        versionsConn.disconnect()
+
+        val listType = object : TypeToken<List<Map<String, Any>>>() {}.type
+        val allVersions: List<Map<String, Any>> = Gson().fromJson(allVersionsText, listType)
+
+        val versionIds = mutableListOf<Int>()
+        for (target in cfGameVersions) {
+            val matched = allVersions.find { it["name"] == target }
+            if (matched != null) {
+                versionIds += (matched["id"] as Double).toInt()
+            } else {
+                logger.warn("  \u26A0 无法解析 CurseForge 游戏版本: '$target'")
+            }
+        }
+        if (versionIds.isEmpty()) {
+            throw GradleException("无法解析任何 CurseForge 游戏版本 ID")
+        }
+
+        // Upload via multipart
+        val boundary = "----GtoPublish${System.nanoTime()}"
+        val metadata = Gson().toJson(
+            mapOf(
+                "changelog" to "Release $ver",
+                "changelogType" to "markdown",
+                "displayName" to "${archivesName.get()}-${ver}.jar",
+                "gameVersions" to versionIds,
+                "releaseType" to "release"
+            )
+        )
+
+        val uploadUrl = "https://minecraft.curseforge.com/api/projects/${cfProjectId}/upload-file"
+        val conn = URI(uploadUrl).toURL().openConnection() as HttpURLConnection
+        conn.requestMethod = "POST"
+        conn.setRequestProperty("X-Api-Token", cfToken)
+        conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+        conn.doOutput = true
+        conn.connectTimeout = 60000
+        conn.readTimeout = 60000
+
+        conn.outputStream.use { os ->
+            val writer = PrintWriter(OutputStreamWriter(os, Charsets.UTF_8), true)
+            writer.append("--${boundary}\r\n")
+            writer.append("Content-Disposition: form-data; name=\"metadata\"\r\n")
+            writer.append("Content-Type: application/json\r\n\r\n")
+            writer.append(metadata).append("\r\n")
+            writer.flush()
+            writer.append("--${boundary}\r\n")
+            writer.append("Content-Disposition: form-data; name=\"file\"; filename=\"${mainJar.name}\"\r\n")
+            writer.append("Content-Type: application/java-archive\r\n\r\n")
+            writer.flush()
+            mainJar.inputStream().use { it.copyTo(os) }
+            os.flush()
+            writer.append("\r\n--${boundary}--\r\n")
+            writer.flush()
+        }
+
+        if (conn.responseCode !in listOf(200, 201)) {
+            val error = conn.errorStream?.bufferedReader()?.readText() ?: "unknown error"
+            throw GradleException("CurseForge 上传失败 (${conn.responseCode}): $error")
+        }
+        logger.lifecycle("\u2713 已上传至 CurseForge: ${mainJar.name}")
+        conn.disconnect()
+    }
+}

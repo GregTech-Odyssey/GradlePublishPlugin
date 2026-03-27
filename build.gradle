@@ -1,0 +1,51 @@
+plugins {
+    id 'java-gradle-plugin'
+    id 'org.jetbrains.kotlin.jvm' version '2.1.20'
+    id 'maven-publish'
+}
+
+group = 'com.gto'
+version = '1.0.0'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+    withSourcesJar()
+}
+
+kotlin {
+    jvmToolchain(17)
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation gradleApi()
+    implementation 'com.google.code.gson:gson:2.11.0'
+}
+
+gradlePlugin {
+    plugins {
+        gtoPublish {
+            id = 'com.gto.gto-publish'
+            implementationClass = 'com.gto.gtoPublish.GtoPublishPlugin'
+            displayName = 'GTO Publish Plugin'
+            description = 'Reusable multi-target publish plugin for Maven, GitHub Release, and CurseForge'
+        }
+    }
+}
+
+publishing {
+    repositories {
+        maven {
+            name = 'gtodysseyReleases'
+            url = uri('https://maven.gtodyssey.com/releases')
+            credentials {
+                username = findProperty('gtodysseyReleasesUsername') ?: ''
+                password = findProperty('gtodysseyReleasesPassword') ?: ''
+            }
+        }
+    }
+}
