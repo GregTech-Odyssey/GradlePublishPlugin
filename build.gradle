@@ -5,7 +5,10 @@ plugins {
 }
 
 group = 'com.gto'
-version = '1.0.0'
+
+// 插件版本号: 支持 x.x.x-release/alpha/beta 格式，-release 后缀自动去除
+def pluginVersion = findProperty('gto_plugin_version') ?: '1.0.0-release'
+version = pluginVersion.toString().replaceAll(/-release$/, '')
 
 java {
     sourceCompatibility = JavaVersion.VERSION_17
@@ -29,7 +32,7 @@ dependencies {
 gradlePlugin {
     plugins {
         gtoPublish {
-            id = 'com.gto.gto-publish'
+            id = 'com.gto.gtopublishgradleplugin'
             implementationClass = 'com.gto.gtoPublish.GtoPublishPlugin'
             displayName = 'GTO Publish Plugin'
             description = 'Reusable multi-target publish plugin for Maven, GitHub Release, and CurseForge'
@@ -40,11 +43,11 @@ gradlePlugin {
 publishing {
     repositories {
         maven {
-            name = 'gtodysseyReleases'
+            name = 'gtodysseyRepository'
             url = uri('https://maven.gtodyssey.com/releases')
             credentials {
-                username = findProperty('gtodysseyReleasesUsername') ?: ''
-                password = findProperty('gtodysseyReleasesPassword') ?: ''
+                username = findProperty('gtodysseyRepositoryUsername') ?: ''
+                password = findProperty('gtodysseyRepositoryPassword') ?: ''
             }
         }
     }

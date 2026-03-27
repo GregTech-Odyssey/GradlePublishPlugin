@@ -4,22 +4,7 @@
 
 ## 安装
 
-在消费项目的 `build.gradle` 中：
-
-```groovy
-buildscript {
-    repositories {
-        maven { url 'https://maven.gtodyssey.com/releases' }
-    }
-    dependencies {
-        classpath 'com.gto:gto-publish:1.0.0'
-    }
-}
-
-apply plugin: 'com.gto.gto-publish'
-```
-
-或使用 `plugins` DSL（需要在 `settings.gradle` 中配置 pluginManagement）：
+在消费项目的 `settings.gradle` 中配置 pluginManagement：
 
 ```groovy
 // settings.gradle
@@ -32,9 +17,22 @@ pluginManagement {
 
 // build.gradle
 plugins {
-    id 'com.gto.gto-publish' version '1.0.0'
+    id 'com.gto.gtopublishgradleplugin' version '1.0.0'
 }
 ```
+
+## 版本格式
+
+项目版本必须符合 `x.x.x[-alpha|-beta|-release]` 格式：
+
+| 版本号示例 | 实际发布版本 | 类型 | GitHub 行为 | CurseForge `releaseType` |
+|---|---|---|---|---|
+| `1.0.0-alpha` | `1.0.0-alpha` | Alpha | Pre-release，名称前缀 `[Alpha]` | `alpha` |
+| `1.0.0-beta` | `1.0.0-beta` | Beta | Pre-release，名称前缀 `[Beta]` | `beta` |
+| `1.0.0-release` | `1.0.0` | Release | 正式发布 | `release` |
+| `1.0.0` | `1.0.0` | Release | 正式发布 | `release` |
+
+> **注意**：`-release` 后缀会自动从所有发布产物的文件名和版本号中去除。
 
 ## 配置
 
@@ -43,44 +41,43 @@ plugins {
 ```groovy
 gtoPublish {
     publishMaven      = true        // 默认 true
-    publishGithub     = true        // 默认 true
+    publishGithub     = false       // 默认 false
     publishCurseforge = false       // 默认 false
-    mavenRepoName     = 'gtodysseyReleases'  // 默认值
+    mavenRepoName     = 'gtodysseyRepository'  // 默认值
     mavenRepoUrl      = 'https://maven.gtodyssey.com/releases'  // 默认值
+    githubRepo        = 'owner/repo-name'      // GitHub 仓库（启用 GitHub 发布时必填）
+    curseforgeProjectId = '123456'               // CurseForge 项目 ID（启用 CurseForge 时必填）
     curseforgeGameVersions = ['26.1', 'NeoForge', 'Java 25']    // 默认值
 }
-```
-
-### 方式二：通过 `gradle.properties`
-
-```properties
-gtoPublishMaven=true
-gtoPublishGithub=true
-gtoPublishCurseforge=false
-gtoMavenRepoName=gtodysseyReleases
-gtoMavenRepoUrl=https://maven.gtodyssey.com/releases
-gtoCurseforgeGameVersions=26.1,NeoForge,Java 25
 ```
 
 ## 凭证配置
 
 在 `~/.gradle/gradle.properties` 中设置（**不要**提交到项目中）：
 
+```cmd
+:: Windows CMD 一键打开（自动创建目录和文件）
+(if not exist "%USERPROFILE%\.gradle" mkdir "%USERPROFILE%\.gradle") & (if not exist "%USERPROFILE%\.gradle\gradle.properties" type nul > "%USERPROFILE%\.gradle\gradle.properties") & notepad "%USERPROFILE%\.gradle\gradle.properties"
+```
+
+```bash
+# macOS / Linux
+mkdir -p ~/.gradle && touch ~/.gradle/gradle.properties && nano ~/.gradle/gradle.properties
+```
+
 ```properties
 # Maven 仓库凭证（联系 xinxinsuried 获取）
-gtodysseyReleasesUsername=你的用户名
-gtodysseyReleasesPassword=你的密码
+gtodysseyRepositoryUsername=你的用户名
+gtodysseyRepositoryPassword=你的密码
 
 # GitHub Token
 # 获取方式: GitHub → Settings → Developer settings → Personal access tokens → Generate new token
 # 需要权限: repo (Full control of private repositories)
 gtoGithubToken=ghp_xxxxxxxxxxxx
-gtoGithubRepo=owner/repo-name
 
 # CurseForge (如启用)
 # 获取方式: https://www.curseforge.com/account/api-tokens
 gtoCurseforgeToken=你的API密钥
-gtoCurseforgeProjectId=123456
 ```
 
 GitHub Token 也支持环境变量 `GH_TOKEN` 或 `GITHUB_TOKEN`。
@@ -94,26 +91,38 @@ GitHub Token 也支持环境变量 `GH_TOKEN` 或 `GITHUB_TOKEN`。
 # 仅校验凭证和版本
 ./gradlew gtoValidate
 
+# 检查 Maven 版本是否已存在
+./gradlew gtoCheckMavenVersion
+
 # 单独发布到某个目标
 ./gradlew gtoPublishMaven
 ./gradlew gtoPublishGithub
 ./gradlew gtoPublishCurseforge
 ```
 
+> **推荐发布顺序**：Maven → GitHub → CurseForge。GitHub 和 CurseForge 发布前会自动校验本地 JAR 与 Maven 仓库中产物的 SHA-1 一致性，因此 Maven 必须先完成发布。
+
 ## 注册的 Task
 
-| Task                    | 描述                                     |
-|-------------------------|------------------------------------------|
-| `gtoValidate`           | 校验凭证配置和版本号是否冲突             |
-| `gtoPublishMaven`       | 发布到 Maven 仓库（委托给内置 publish）  |
-| `gtoPublishGithub`      | 创建 GitHub Release 并上传 JAR           |
-| `gtoPublishCurseforge`  | 上传 JAR 到 CurseForge                   |
-| `gtoPublish`            | 总入口：validate → build → 所有启用目标  |
+| Task | 描述 |
+|---|---|
+| `gtoValidate` | 校验凭证配置和版本号是否冲突 |
+| `gtoCheckMavenVersion` | 检查版本在 Maven 仓库中是否已存在 |
+| `gtoPublishMaven` | 发布到 Maven 仓库（委托给内置 publish） |
+| `gtoPublishGithub` | 创建 GitHub Release 并上传 JAR（包含 Maven 一致性校验） |
+| `gtoPublishCurseforge` | 上传 JAR 到 CurseForge（包含 Maven 一致性校验） |
+| `gtoPublish` | 总入口：validate → build → 所有启用目标 |
 
 ## 发布此插件
+
+插件自身版本通过 `gradle.properties` 中的 `gto_plugin_version` 配置，同样遵循版本格式规则：
+
+```properties
+gto_plugin_version=1.0.0-release
+```
 
 ```bash
 ./gradlew publish
 ```
 
-需要在 `~/.gradle/gradle.properties` 中配置 `gtodysseyReleasesUsername` 和 `gtodysseyReleasesPassword`。
+需要在 `~/.gradle/gradle.properties` 中配置 `gtodysseyRepositoryUsername` 和 `gtodysseyRepositoryPassword`。

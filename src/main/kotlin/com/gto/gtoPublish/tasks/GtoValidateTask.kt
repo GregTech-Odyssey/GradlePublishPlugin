@@ -93,10 +93,10 @@ abstract class GtoValidateTask : DefaultTask() {
          勾选 repo 权限 (Full control of private repositories)"""
             }
             if (!githubRepo.isPresent || githubRepo.get().isBlank()) {
-                errors += """Missing: gtoGithubRepo
-      ┌─ 设置方式: 在 ~/.gradle/gradle.properties 中添加:
-      │    gtoGithubRepo=owner/repo-name
-      └─ 示例: gtoGithubRepo=GTO-Odyssey/RegistryLib3"""
+                errors += """Missing: githubRepo
+      ┌─ 设置方式: 在 gtoPublish {} 扩展块中添加:
+      │    githubRepo = 'owner/repo-name'
+      └─ 示例: githubRepo = 'GTO-Odyssey/RegistryLib3'"""
             }
         }
 
@@ -109,9 +109,9 @@ abstract class GtoValidateTask : DefaultTask() {
       └─ 获取方式: https://www.curseforge.com/account/api-tokens"""
             }
             if (!curseforgeProjectId.isPresent || curseforgeProjectId.get().isBlank()) {
-                errors += """Missing: gtoCurseforgeProjectId
-      ┌─ 设置方式: 在 ~/.gradle/gradle.properties 中添加:
-      │    gtoCurseforgeProjectId=123456
+                errors += """Missing: curseforgeProjectId
+      ┌─ 设置方式: 在 gtoPublish {} 扩展块中添加:
+      │    curseforgeProjectId = '123456'
       └─ 获取方式: CurseForge 项目页面 → About This Project → Project ID"""
             }
         }

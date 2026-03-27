@@ -9,22 +9,34 @@ import java.security.MessageDigest
 
 object VersionChecker {
 
-    private val VERSION_REGEX = Regex("""\d+\.\d+\.\d+-(alpha|beta|release)""")
+    private val VERSION_REGEX = Regex("""\d+\.\d+\.\d+(-(alpha|beta|release))?""")
 
     fun checkVersionFormat(version: String) {
         if (!version.matches(VERSION_REGEX)) {
             throw GradleException(
                 "mod_version '${version}' 不是合法的版本号格式\n" +
-                    "要求格式: x.x.x-alpha 或 x.x.x-beta 或 x.x.x-release"
+                    "要求格式: x.x.x-alpha 或 x.x.x-beta 或 x.x.x-release 或 x.x.x"
             )
         }
     }
 
     /**
      * 从版本号中解析发布类型: alpha / beta / release
+     * 无后缀的 x.x.x 视为 release
      */
     fun parseReleaseType(version: String): String {
-        return version.substringAfterLast('-')
+        return if (version.contains('-')) version.substringAfterLast('-') else "release"
+    }
+
+    /**
+     * 获取显示版本号：去除 -release 后缀
+     * 1.0.0-release → 1.0.0
+     * 1.0.0-alpha   → 1.0.0-alpha
+     * 1.0.0-beta    → 1.0.0-beta
+     * 1.0.0         → 1.0.0
+     */
+    fun displayVersion(version: String): String {
+        return version.removeSuffix("-release")
     }
 
     fun checkMavenVersionNotExists(

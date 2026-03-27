@@ -14,6 +14,15 @@ class GtoPublishPlugin : Plugin<Project> {
         applyPropertyOverrides(project, ext)
 
         project.afterEvaluate {
+            val originalVersion = project.version.toString()
+            VersionChecker.checkVersionFormat(originalVersion)
+            val displayVer = VersionChecker.displayVersion(originalVersion)
+
+            // 将 project.version 设为显示版本（去除 -release）
+            // 这样 assemble 产生的 JAR、Maven 发布的制品都不包含 -release
+            project.version = displayVer
+            project.logger.lifecycle("版本: $originalVersion → 显示版本: $displayVer")
+
             val enableMaven = ext.publishMaven.get()
             val enableGithub = ext.publishGithub.get()
             val enableCurseforge = ext.publishCurseforge.get()
@@ -38,15 +47,11 @@ class GtoPublishPlugin : Plugin<Project> {
                     project.findProperty("${repoName}Password")?.toString()
                 })
                 task.githubToken.set(project.provider { resolveGithubToken(project) })
-                task.githubRepo.set(project.provider {
-                    project.findProperty("gtoGithubRepo")?.toString()
-                })
+                task.githubRepo.set(ext.githubRepo)
                 task.curseforgeToken.set(project.provider {
                     project.findProperty("gtoCurseforgeToken")?.toString()
                 })
-                task.curseforgeProjectId.set(project.provider {
-                    project.findProperty("gtoCurseforgeProjectId")?.toString()
-                })
+                task.curseforgeProjectId.set(ext.curseforgeProjectId)
             }
 
             // --- Maven: 版本检查 + 发布 ---
@@ -86,9 +91,7 @@ class GtoPublishPlugin : Plugin<Project> {
                 project.tasks.register("gtoPublishGithub", GtoPublishGithubTask::class.java) { task ->
                     task.projectVersion.set(project.provider { project.version.toString() })
                     task.githubToken.set(project.provider { resolveGithubToken(project) })
-                    task.githubRepo.set(project.provider {
-                        project.findProperty("gtoGithubRepo")?.toString()
-                    })
+                    task.githubRepo.set(ext.githubRepo)
                     task.mavenRepoUrl.set(ext.mavenRepoUrl)
                     task.projectGroup.set(project.provider { project.group.toString() })
                     task.archivesName.set(project.provider {
@@ -106,9 +109,7 @@ class GtoPublishPlugin : Plugin<Project> {
                     task.curseforgeToken.set(project.provider {
                         project.findProperty("gtoCurseforgeToken")?.toString()
                     })
-                    task.curseforgeProjectId.set(project.provider {
-                        project.findProperty("gtoCurseforgeProjectId")?.toString()
-                    })
+                    task.curseforgeProjectId.set(ext.curseforgeProjectId)
                     task.gameVersions.set(ext.curseforgeGameVersions)
                     task.archivesName.set(project.provider {
                         project.extensions.getByType(BasePluginExtension::class.java).archivesName.get()
@@ -158,6 +159,12 @@ class GtoPublishPlugin : Plugin<Project> {
         }
         project.findProperty("gtoMavenRepoUrl")?.let {
             ext.mavenRepoUrl.set(it.toString())
+        }
+        project.findProperty("gtoGithubRepo")?.let {
+            ext.githubRepo.set(it.toString())
+        }
+        project.findProperty("gtoCurseforgeProjectId")?.let {
+            ext.curseforgeProjectId.set(it.toString())
         }
         project.findProperty("gtoCurseforgeGameVersions")?.let {
             ext.curseforgeGameVersions.set(it.toString().split(",").map { s -> s.trim() })
