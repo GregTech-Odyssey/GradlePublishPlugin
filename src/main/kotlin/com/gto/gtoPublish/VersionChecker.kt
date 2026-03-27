@@ -246,14 +246,26 @@ object VersionChecker {
                     ?: return
                 if (latestVersion != currentVersion) {
                     throw GradleException(
-                        "GTO Publish Plugin 版本已过期！\n" +
-                            "  当前版本: $currentVersion\n" +
-                            "  最新版本: $latestVersion\n\n" +
-                            "  所有发布功能已禁用，请先升级插件：\n" +
-                            "  在 build.gradle 中更新: id 'com.gto.gtopublishgradleplugin' version '$latestVersion'"
+                        "\n" +
+                            "╔══════════════════════════════════════════════════════════════╗\n" +
+                            "║       GTO Publish Plugin — 版本过期 / Outdated Version       ║\n" +
+                            "╠══════════════════════════════════════════════════════════════╣\n" +
+                            "║                                                              ║\n" +
+                            "║  当前版本 / Current : $currentVersion\n" +
+                            "║  最新版本 / Latest  : $latestVersion\n" +
+                            "║                                                              ║\n" +
+                            "║  所有发布功能已禁用，请先升级插件。                          ║\n" +
+                            "║  All publish features are disabled. Please upgrade first.    ║\n" +
+                            "║                                                              ║\n" +
+                            "║  修改 build.gradle / Update build.gradle:                    ║\n" +
+                            "║  id 'com.gto.gtopublishgradleplugin' version '$latestVersion'\n" +
+                            "║                                                              ║\n" +
+                            "╚══════════════════════════════════════════════════════════════╝"
                     )
                 }
-                logger.lifecycle("✓ GTO Publish Plugin 已是最新版本 ($currentVersion)")
+                logger.lifecycle(
+                    "✓ GTO Publish Plugin 版本检查通过 / Version check passed ($currentVersion)"
+                )
             } finally {
                 conn.disconnect()
             }

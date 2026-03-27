@@ -28,6 +28,7 @@ repositories {
 def generateVersionProps = tasks.register('generateVersionProperties') {
     def outputDir = layout.buildDirectory.dir('generated/resources/plugin-version')
     def versionValue = project.version.toString()
+    inputs.property('pluginVersion', versionValue)
     outputs.dir(outputDir)
     doLast {
         def propsFile = outputDir.get().file('gto-publish-version.properties').asFile
