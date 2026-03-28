@@ -38,8 +38,6 @@ publishing {
 
 3. **版本号格式**需符合 `x.x.x[-alpha|-beta|-release]`（见下方 [版本格式](#版本格式) 章节）
 
-4. **配置 `minecraft_version`**（启用 CurseForge 时必须）：在项目的 `gradle.properties` 中设置 `minecraft_version=26.1`
-
 ## 安装
 
 在消费项目的 `settings.gradle` 中配置 pluginManagement：
@@ -87,11 +85,29 @@ gtoPublish {
     mavenRepoName     = 'gtodysseyRepository'  // 默认值
     mavenRepoUrl      = 'https://maven.gtodyssey.com/releases'  // 默认值
     githubRepo        = 'owner/repo-name'      // GitHub 仓库（启用 GitHub 发布时必填）
-    curseforgeProjectId = '123456'               // CurseForge 项目 ID（启用 CurseForge 时必填）
-    curseforgeModLoader = 'NeoForge'             // 模组加载器（启用 CurseForge 时必填，如 NeoForge, Forge, Fabric）
-    curseforgeJavaVersion = 'Java 25'            // Java 版本（启用 CurseForge 时必填，如 Java 8, Java 17, Java 21, Java 25）
+    curseforgeProjectId   = '123456'    // CurseForge 项目 ID（启用 CurseForge 时必填）
+    minecraftVersion      = '26.1'      // Minecraft 版本（默认 26.1）
+    curseforgeModLoader   = 'NeoForge'  // 模组加载器（启用 CurseForge 时必填，如 NeoForge, Forge, Fabric）
+    curseforgeJavaVersion = 'Java 25'   // Java 版本（启用 CurseForge 时必填，如 Java 8, Java 17, Java 21, Java 25）
 }
 ```
+
+### 方式二：通过 `gradle.properties` 覆盖
+
+所有扩展属性都可通过项目级或全局 `gradle.properties` 覆盖：
+
+| 扩展属性 | gradle.properties Key |
+|---|---|
+| `publishMaven` | `gtoPublishMaven` |
+| `publishGithub` | `gtoPublishGithub` |
+| `publishCurseforge` | `gtoPublishCurseforge` |
+| `mavenRepoName` | `gtoMavenRepoName` |
+| `mavenRepoUrl` | `gtoMavenRepoUrl` |
+| `githubRepo` | `gtoGithubRepo` |
+| `curseforgeProjectId` | `gtoCurseforgeProjectId` |
+| `minecraftVersion` | `gtoCurseforgeMinecraftVersion` |
+| `curseforgeModLoader` | `gtoCurseforgeModLoader` |
+| `curseforgeJavaVersion` | `gtoCurseforgeJavaVersion` |
 
 ## 凭证配置
 

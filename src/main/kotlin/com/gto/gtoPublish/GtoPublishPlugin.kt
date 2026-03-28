@@ -218,7 +218,7 @@ class GtoPublishPlugin : Plugin<Project> {
         project.findProperty("gtoCurseforgeProjectId")?.let {
             ext.curseforgeProjectId.set(it.toString())
         }
-        project.findProperty("minecraft_version")?.let {
+        project.findProperty("gtoCurseforgeMinecraftVersion")?.let {
             ext.minecraftVersion.set(it.toString())
         }
         project.findProperty("gtoCurseforgeModLoader")?.let {

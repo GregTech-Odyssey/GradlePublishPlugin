@@ -25,7 +25,7 @@ abstract class GtoPublishExtension {
     /** CurseForge 项目 ID */
     abstract val curseforgeProjectId: Property<String>
 
-    /** Minecraft 版本号，从项目的 minecraft_version 属性读取 */
+    /** Minecraft 版本号（默认 26.1） */
     abstract val minecraftVersion: Property<String>
 
     /** CurseForge 模组加载器标签，如 NeoForge、Forge、Fabric 等 */
@@ -42,7 +42,7 @@ abstract class GtoPublishExtension {
         mavenRepoUrl.convention("https://maven.gtodyssey.com/releases")
         githubRepo.convention("")
         curseforgeProjectId.convention("")
-        minecraftVersion.convention("")
+        minecraftVersion.convention("26.1")
         curseforgeModLoader.convention("")
         curseforgeJavaVersion.convention("")
     }
