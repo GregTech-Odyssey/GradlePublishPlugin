@@ -154,7 +154,7 @@ abstract class GtoValidateTask : DefaultTask() {
         if (enableMaven.get()) {
             try {
                 VersionChecker.checkMavenVersionNotExists(
-                    mavenRepoUrl.get(), projectGroup.get(), archivesName.get(), ver, logger
+                    mavenRepoUrl.get(), projectGroup.get(), archivesName.get(), minecraftVersion.get(), ver, logger
                 )
             } catch (e: GradleException) {
                 versionErrors += e.message ?: "Maven 版本冲突"

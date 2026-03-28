@@ -83,14 +83,74 @@ gtoPublish {
     publishGithub     = false       // 默认 false
     publishCurseforge = false       // 默认 false
     mavenRepoName     = 'gtodysseyRepository'  // 默认值
-    mavenRepoUrl      = 'https://maven.gtodyssey.com/releases'  // 默认值
+    mavenRepoUrl      = 'releases'  // 必填，可选值: 'releases' 或 'private'
+    minecraftVersion      = '26.1'      // 必填，Minecraft 版本号
     githubRepo        = 'owner/repo-name'      // GitHub 仓库（启用 GitHub 发布时必填）
     curseforgeProjectId   = '123456'    // CurseForge 项目 ID（启用 CurseForge 时必填）
-    minecraftVersion      = '26.1'      // Minecraft 版本（默认 26.1）
     curseforgeModLoader   = 'NeoForge'  // 模组加载器（启用 CurseForge 时必填，如 NeoForge, Forge, Fabric）
     curseforgeJavaVersion = 'Java 25'   // Java 版本（启用 CurseForge 时必填，如 Java 8, Java 17, Java 21, Java 25）
 }
 ```
+
+`mavenRepoUrl` 支持以下简写值：
+
+| 简写 | 实际 URL |
+|---|---|
+| `releases` | `https://maven.gtodyssey.com/releases` |
+| `private` | `https://maven.gtodyssey.com/private` |
+
+Maven 制品路径格式为：`{repoUrl}/{group}/{artifactId}/{minecraftVersion}/{version}/...`
+
+例如：`https://maven.gtodyssey.com/releases/com/gto/registrylib/26.1/7.0.8/registrylib-7.0.8.pom`
+
+### 完整配置示例
+
+以下示例展示了一个 Minecraft 26.1、模组版本 0.0.2、NeoForge 加载器、Java 25、发布到 releases 仓库并同时发布到 GitHub 和 CurseForge 的完整配置：
+
+```groovy
+// build.gradle
+plugins {
+    id 'maven-publish'
+    id 'com.gto.gtopublishgradleplugin' version '1.0.0'
+}
+
+version = '0.0.2'
+group = 'com.gto'
+base.archivesName = 'my-mod'
+
+gtoPublish {
+    publishMaven      = true
+    publishGithub     = true
+    publishCurseforge = true
+    mavenRepoUrl      = 'releases'
+    minecraftVersion  = '26.1'
+    githubRepo        = 'GregTech-Odyssey/my-mod'
+    curseforgeProjectId   = '123456'
+    curseforgeModLoader   = 'NeoForge'
+    curseforgeJavaVersion = 'Java 25'
+}
+
+publishing {
+    repositories {
+        maven {
+            name = 'gtodysseyRepository'
+            url = 'https://maven.gtodyssey.com/releases'
+            credentials {
+                username = findProperty('gtodysseyRepositoryUsername') ?: ''
+                password = findProperty('gtodysseyRepositoryPassword') ?: ''
+            }
+        }
+    }
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+        }
+    }
+}
+```
+
+发布后，Maven 制品将位于：
+`https://maven.gtodyssey.com/releases/com/gto/my-mod/26.1/0.0.2/my-mod-0.0.2.jar`
 
 ### 方式二：通过 `gradle.properties` 覆盖
 

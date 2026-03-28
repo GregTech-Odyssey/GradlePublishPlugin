@@ -40,6 +40,11 @@ class GtoPublishPlugin : Plugin<Project> {
             val enableCurseforge = ext.publishCurseforge.get()
             val repoName = ext.mavenRepoName.get()
 
+            // 解析 mavenRepoUrl 简写为完整 URL
+            if (ext.mavenRepoUrl.isPresent) {
+                ext.mavenRepoUrl.set(GtoPublishExtension.resolveRepoUrl(ext.mavenRepoUrl.get()))
+            }
+
             // --- gtoValidate: 凭证 + 全局版本校验 ---
             project.tasks.register("gtoValidate", GtoValidateTask::class.java) { task ->
                 task.enableMaven.set(ext.publishMaven)
@@ -77,6 +82,7 @@ class GtoPublishPlugin : Plugin<Project> {
                     task.archivesName.set(project.provider {
                         project.extensions.getByType(BasePluginExtension::class.java).archivesName.get()
                     })
+                    task.minecraftVersion.set(ext.minecraftVersion)
                     task.projectVersion.set(project.provider { project.version.toString() })
                 }
 
@@ -142,6 +148,7 @@ class GtoPublishPlugin : Plugin<Project> {
                     task.archivesName.set(project.provider {
                         project.extensions.getByType(BasePluginExtension::class.java).archivesName.get()
                     })
+                    task.minecraftVersion.set(ext.minecraftVersion)
                     task.libsDir = project.layout.buildDirectory.dir("libs").get().asFile
                     task.skipMavenConsistencyCheck.set(enableMaven)
                     task.mustRunAfter("gtoValidate", "assemble")
@@ -210,7 +217,7 @@ class GtoPublishPlugin : Plugin<Project> {
             ext.mavenRepoName.set(it.toString())
         }
         project.findProperty("gtoMavenRepoUrl")?.let {
-            ext.mavenRepoUrl.set(it.toString())
+            ext.mavenRepoUrl.set(GtoPublishExtension.resolveRepoUrl(it.toString()))
         }
         project.findProperty("gtoGithubRepo")?.let {
             ext.githubRepo.set(it.toString())

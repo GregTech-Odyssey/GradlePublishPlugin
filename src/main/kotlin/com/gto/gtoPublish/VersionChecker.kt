@@ -104,11 +104,12 @@ object VersionChecker {
         repoUrl: String,
         group: String,
         artifactId: String,
+        minecraftVersion: String,
         version: String,
         logger: Logger
     ) {
         val groupPath = group.replace('.', '/')
-        val pomUrl = "${repoUrl}/${groupPath}/${artifactId}/${version}/${artifactId}-${version}.pom"
+        val pomUrl = "${repoUrl}/${groupPath}/${artifactId}/${minecraftVersion}/${version}/${artifactId}-${version}.pom"
         try {
             val conn = URI(pomUrl).toURL().openConnection() as HttpURLConnection
             conn.requestMethod = "HEAD"
@@ -163,12 +164,13 @@ object VersionChecker {
         repoUrl: String,
         group: String,
         artifactId: String,
+        minecraftVersion: String,
         version: String,
         localJar: File,
         logger: Logger
     ) {
         val groupPath = group.replace('.', '/')
-        val jarUrl = "${repoUrl}/${groupPath}/${artifactId}/${version}/${artifactId}-${version}.jar"
+        val jarUrl = "${repoUrl}/${groupPath}/${artifactId}/${minecraftVersion}/${version}/${artifactId}-${version}.jar"
         val sha1Url = "${jarUrl}.sha1"
 
         // 1. 检查 Maven 上 JAR 是否存在

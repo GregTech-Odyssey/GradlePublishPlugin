@@ -34,6 +34,9 @@ abstract class GtoPublishGithubTask : DefaultTask() {
     abstract val archivesName: Property<String>
 
     @get:Input
+    abstract val minecraftVersion: Property<String>
+
+    @get:Input
     abstract val skipMavenConsistencyCheck: Property<Boolean>
 
     @get:InputDirectory
@@ -66,7 +69,7 @@ abstract class GtoPublishGithubTask : DefaultTask() {
             if (jarsForCheck.isNotEmpty()) {
                 VersionChecker.requireMavenArtifactConsistent(
                     mavenRepoUrl.get(), projectGroup.get(), archivesName.get(),
-                    ver, jarsForCheck.first(), logger
+                    minecraftVersion.get(), ver, jarsForCheck.first(), logger
                 )
             }
         }

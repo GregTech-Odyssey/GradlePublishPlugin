@@ -80,7 +80,7 @@ abstract class GtoPublishCurseforgeTask : DefaultTask() {
         } else {
             VersionChecker.requireMavenArtifactConsistent(
                 mavenRepoUrl.get(), projectGroup.get(), archivesName.get(),
-                ver, mainJar, logger
+                minecraftVersion.get(), ver, mainJar, logger
             )
         }
 
