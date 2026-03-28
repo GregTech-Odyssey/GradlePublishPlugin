@@ -4,6 +4,8 @@ import com.gto.gtoPublish.tasks.*
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.plugins.BasePluginExtension
+import org.gradle.api.publish.PublishingExtension
+import org.gradle.api.publish.maven.MavenPublication
 
 class GtoPublishPlugin : Plugin<Project> {
 
@@ -74,8 +76,25 @@ class GtoPublishPlugin : Plugin<Project> {
                 task.minecraftVersion.set(ext.minecraftVersion)
             }
 
-            // --- Maven: 版本检查 + 发布 ---
+            // --- Maven: 版本检查 + 暂存到本地 + 自定义路径上传 ---
             if (enableMaven) {
+                // 配置 maven-publish：暂存到本地目录
+                val stagingDir = project.layout.buildDirectory.dir("gto-maven-staging").get().asFile
+                project.pluginManager.apply("maven-publish")
+                project.extensions.configure(PublishingExtension::class.java) { publishing ->
+                    // 注册暂存仓库
+                    publishing.repositories.maven { repo ->
+                        repo.name = "gtoStaging"
+                        repo.url = stagingDir.toURI()
+                    }
+                    // 如果没有 publication，自动创建一个
+                    if (publishing.publications.isEmpty()) {
+                        publishing.publications.create("mavenJava", MavenPublication::class.java) { pub ->
+                            pub.from(project.components.getByName("java"))
+                        }
+                    }
+                }
+
                 project.tasks.register("gtoCheckMavenVersion", GtoCheckMavenVersionTask::class.java) { task ->
                     task.mavenRepoUrl.set(ext.mavenRepoUrl)
                     task.projectGroup.set(project.provider { project.group.toString() })
@@ -86,53 +105,34 @@ class GtoPublishPlugin : Plugin<Project> {
                     task.projectVersion.set(project.provider { project.version.toString() })
                 }
 
-                // 查找匹配仓库名的 publish 任务（兼容 maven-publish 延迟注册）
-                val repoNameCapitalized = repoName.replaceFirstChar { c -> c.uppercase() }
-                val mavenPublishTask = project.tasks.names
-                    .filter { it.startsWith("publish") && it.contains(repoNameCapitalized) }
+                // 查找暂存发布任务
+                val stagingPublishTask = project.tasks.names
+                    .filter { it.startsWith("publish") && it.contains("GtoStaging") }
                     .firstOrNull()
-                    ?: project.tasks.names.find { it == "publish" }
+                    ?: "publishAllPublicationsToGtoStagingRepository"
 
-                if (mavenPublishTask == null) {
-                    project.logger.error(
-                        "╔══════════════════════════════════════════════════════════════╗\n" +
-                        "║  GTO Publish Plugin — Maven 发布配置错误                     ║\n" +
-                        "╠══════════════════════════════════════════════════════════════╣\n" +
-                        "║  找不到名称包含 '$repoName' 的 publish 任务。                ║\n" +
-                        "║  No publish task found containing '$repoName'.               ║\n" +
-                        "║                                                              ║\n" +
-                        "║  请确保项目已应用 maven-publish 插件并配置了仓库:             ║\n" +
-                        "║  Make sure maven-publish plugin is applied with repository:  ║\n" +
-                        "║                                                              ║\n" +
-                        "║    plugins { id 'maven-publish' }                            ║\n" +
-                        "║    publishing {                                               ║\n" +
-                        "║      repositories {                                           ║\n" +
-                        "║        maven {                                                ║\n" +
-                        "║          name = '$repoName'                                  ║\n" +
-                        "║          url = '...'                                          ║\n" +
-                        "║        }                                                      ║\n" +
-                        "║      }                                                        ║\n" +
-                        "║    }                                                          ║\n" +
-                        "║                                                              ║\n" +
-                        "║  文档 / Docs: ${VersionChecker.DOCS_URL}\n" +
-                        "╚══════════════════════════════════════════════════════════════╝"
-                    )
-                    throw org.gradle.api.GradleException(
-                        "Maven publish task not found. Apply 'maven-publish' plugin and configure a repository named '$repoName'.\n" +
-                        "详情请参阅 / See: ${VersionChecker.DOCS_URL}"
-                    )
-                }
-
-                project.tasks.register("gtoPublishMaven") { task ->
-                    task.group = "gto publishing"
-                    task.description = "Publish to Maven repository ($repoName)"
+                project.tasks.register("gtoPublishMaven", GtoPublishMavenTask::class.java) { task ->
+                    task.mavenRepoUrl.set(ext.mavenRepoUrl)
+                    task.projectGroup.set(project.provider { project.group.toString() })
+                    task.archivesName.set(project.provider {
+                        project.extensions.getByType(BasePluginExtension::class.java).archivesName.get()
+                    })
+                    task.minecraftVersion.set(ext.minecraftVersion)
+                    task.projectVersion.set(project.provider { project.version.toString() })
+                    task.mavenUsername.set(project.provider {
+                        project.findProperty("${repoName}Username")?.toString() ?: ""
+                    })
+                    task.mavenPassword.set(project.provider {
+                        project.findProperty("${repoName}Password")?.toString() ?: ""
+                    })
+                    task.stagingDir = stagingDir
                     task.dependsOn("gtoCheckMavenVersion")
-                    task.dependsOn(mavenPublishTask)
+                    task.dependsOn(stagingPublishTask)
                     task.mustRunAfter("gtoValidate", "assemble")
                 }
 
-                // 确保版本检查在实际发布之前
-                project.tasks.named(mavenPublishTask).configure {
+                // 确保暂存发布在版本检查之后
+                project.tasks.matching { it.name == stagingPublishTask }.configureEach {
                     it.mustRunAfter("gtoCheckMavenVersion")
                 }
             }

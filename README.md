@@ -8,35 +8,11 @@
 
 消费项目必须满足以下条件才能使用此插件：
 
-1. **应用 `maven-publish` 插件** 并配置 Maven 仓库（名称需与 `gtoPublish.mavenRepoName` 一致）：
+1. **配置凭证**（见下方 [凭证配置](#凭证配置) 章节）
 
-```groovy
-plugins {
-    id 'maven-publish'
-}
+2. **版本号格式**需符合 `x.x.x[-alpha|-beta|-release]`（见下方 [版本格式](#版本格式) 章节）
 
-publishing {
-    repositories {
-        maven {
-            name = 'gtodysseyRepository'   // 必须与 gtoPublish.mavenRepoName 一致
-            url = 'https://maven.gtodyssey.com/releases'
-            credentials {
-                username = findProperty('gtodysseyRepositoryUsername') ?: ''
-                password = findProperty('gtodysseyRepositoryPassword') ?: ''
-            }
-        }
-    }
-    publications {
-        mavenJava(MavenPublication) {
-            from components.java
-        }
-    }
-}
-```
-
-2. **配置凭证**（见下方 [凭证配置](#凭证配置) 章节）
-
-3. **版本号格式**需符合 `x.x.x[-alpha|-beta|-release]`（见下方 [版本格式](#版本格式) 章节）
+> **注意**：本插件会自动应用 `maven-publish` 并将制品暂存到本地目录，然后以自定义路径布局上传到远程仓库。消费项目**无需**自行配置 `maven-publish` 插件或 `publishing {}` 块。
 
 ## 安装
 
@@ -110,7 +86,6 @@ Maven 制品路径格式为：`{repoUrl}/{group}/{artifactId}/{minecraftVersion}
 ```groovy
 // build.gradle
 plugins {
-    id 'maven-publish'
     id 'com.gto.gtopublishgradleplugin' version '1.0.0'
 }
 
@@ -128,24 +103,6 @@ gtoPublish {
     curseforgeProjectId   = '123456'
     curseforgeModLoader   = 'NeoForge'
     curseforgeJavaVersion = 'Java 25'
-}
-
-publishing {
-    repositories {
-        maven {
-            name = 'gtodysseyRepository'
-            url = 'https://maven.gtodyssey.com/releases'
-            credentials {
-                username = findProperty('gtodysseyRepositoryUsername') ?: ''
-                password = findProperty('gtodysseyRepositoryPassword') ?: ''
-            }
-        }
-    }
-    publications {
-        mavenJava(MavenPublication) {
-            from components.java
-        }
-    }
 }
 ```
 
@@ -228,7 +185,7 @@ GitHub Token 也支持环境变量 `GH_TOKEN` 或 `GITHUB_TOKEN`。
 |---|---|
 | `gtoValidate` | 校验凭证配置和版本号是否冲突 |
 | `gtoCheckMavenVersion` | 检查版本在 Maven 仓库中是否已存在 |
-| `gtoPublishMaven` | 发布到 Maven 仓库（委托给内置 publish） |
+| `gtoPublishMaven` | 暂存制品后以自定义路径上传到 Maven 仓库（`maven-publish` 生成 POM/checksums） |
 | `gtoPublishGithub` | 创建 GitHub Release 并上传 JAR（包含 Maven 一致性校验） |
 | `gtoPublishCurseforge` | 上传 JAR 到 CurseForge（包含 Maven 一致性校验） |
 | `gtoPublish` | 总入口：validate → build → 所有启用目标 |
