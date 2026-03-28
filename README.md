@@ -8,11 +8,13 @@
 
 消费项目必须满足以下条件才能使用此插件：
 
-1. **配置凭证**（见下方 [凭证配置](#凭证配置) 章节）
+1. **应用 `maven-publish` 插件**并配置 `publishing {}` 块（见下方 [配置](#配置) 章节）
 
-2. **版本号格式**需符合 `x.x.x[-alpha|-beta|-release]`（见下方 [版本格式](#版本格式) 章节）
+2. **配置凭证**（见下方 [凭证配置](#凭证配置) 章节）
 
-> **注意**：本插件会自动应用 `maven-publish` 并将制品暂存到本地目录，然后以自定义路径布局上传到远程仓库。消费项目**无需**自行配置 `maven-publish` 插件或 `publishing {}` 块。
+3. **版本号格式**需符合 `x.x.x[-alpha|-beta|-release]`（见下方 [版本格式](#版本格式) 章节）
+
+> **注意**：本插件会自动将 `archivesName` 修改为 `{name}-{modLoader}-{mcVersion}`（modLoader 自动小写）。例如 `archivesName = 'registrylib'` + `modLoader = 'NeoForge'` + `minecraftVersion = '26.1'` → `registrylib-neoforge-26.1`。本地 JAR、Maven、GitHub、CurseForge 所有文件名统一为 `registrylib-neoforge-26.1-x.x.x.jar`。消费者引用：`implementation("com.gto:registrylib-neoforge-26.1:7.0.8")`。
 
 ## 安装
 
@@ -61,9 +63,9 @@ gtoPublish {
     mavenRepoName     = 'gtodysseyRepository'  // 默认值
     mavenRepoUrl      = 'releases'  // 必填，可选值: 'releases' 或 'private'
     minecraftVersion      = '26.1'      // 必填，Minecraft 版本号
+    modLoader         = 'NeoForge'  // 必填，模组加载器（NeoForge, Forge, Fabric 等）
     githubRepo        = 'owner/repo-name'      // GitHub 仓库（启用 GitHub 发布时必填）
     curseforgeProjectId   = '123456'    // CurseForge 项目 ID（启用 CurseForge 时必填）
-    curseforgeModLoader   = 'NeoForge'  // 模组加载器（启用 CurseForge 时必填，如 NeoForge, Forge, Fabric）
     curseforgeJavaVersion = 'Java 25'   // Java 版本（启用 CurseForge 时必填，如 Java 8, Java 17, Java 21, Java 25）
 }
 ```
@@ -75,9 +77,15 @@ gtoPublish {
 | `releases` | `https://maven.gtodyssey.com/releases` |
 | `private` | `https://maven.gtodyssey.com/private` |
 
-Maven 制品路径格式为：`{repoUrl}/{group}/{artifactId}/{minecraftVersion}/{version}/...`
+本插件会自动将 modLoader(小写) 和 MC 版本编入 archivesName，所有文件名统一：
 
-例如：`https://maven.gtodyssey.com/releases/com/gto/registrylib/26.1/7.0.8/registrylib-7.0.8.pom`
+`{repoUrl}/{group}/{name}-{modLoader}-{mcVersion}/{version}/{name}-{modLoader}-{mcVersion}-{version}.jar`
+
+例如：`https://maven.gtodyssey.com/releases/com/gto/registrylib-neoforge-26.1/7.0.8/registrylib-neoforge-26.1-7.0.8.jar`
+
+本地 JAR：`build/libs/registrylib-neoforge-26.1-7.0.8.jar`
+
+消费者引用方式：`implementation("com.gto:registrylib-neoforge-26.1:7.0.8")`
 
 ### 完整配置示例
 
@@ -86,6 +94,7 @@ Maven 制品路径格式为：`{repoUrl}/{group}/{artifactId}/{minecraftVersion}
 ```groovy
 // build.gradle
 plugins {
+    id 'maven-publish'
     id 'com.gto.gtopublishgradleplugin' version '1.0.0'
 }
 
@@ -93,21 +102,43 @@ version = '0.0.2'
 group = 'com.gto'
 base.archivesName = 'my-mod'
 
+publishing {
+    repositories {
+        maven {
+            name = 'gtodysseyRepository'
+            url = 'https://maven.gtodyssey.com/releases'
+            credentials {
+                username = findProperty('gtodysseyRepositoryUsername')
+                password = findProperty('gtodysseyRepositoryPassword')
+            }
+        }
+    }
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+        }
+    }
+}
+
 gtoPublish {
     publishMaven      = true
     publishGithub     = true
     publishCurseforge = true
     mavenRepoUrl      = 'releases'
     minecraftVersion  = '26.1'
+    modLoader         = 'NeoForge'
     githubRepo        = 'GregTech-Odyssey/my-mod'
     curseforgeProjectId   = '123456'
-    curseforgeModLoader   = 'NeoForge'
     curseforgeJavaVersion = 'Java 25'
 }
 ```
 
-发布后，Maven 制品将位于：
-`https://maven.gtodyssey.com/releases/com/gto/my-mod/26.1/0.0.2/my-mod-0.0.2.jar`
+> **注意**：`publishing {}` 块中的仓库 `name` 必须与 `gtoPublish.mavenRepoName` 一致（默认 `gtodysseyRepository`）。
+
+发布后，所有文件名统一为 `my-mod-neoforge-26.1-0.0.2.jar`：
+`https://maven.gtodyssey.com/releases/com/gto/my-mod-neoforge-26.1/0.0.2/my-mod-neoforge-26.1-0.0.2.jar`
+
+消费者引用：`implementation("com.gto:my-mod-neoforge-26.1:0.0.2")`
 
 ### 方式二：通过 `gradle.properties` 覆盖
 
@@ -122,8 +153,8 @@ gtoPublish {
 | `mavenRepoUrl` | `gtoMavenRepoUrl` |
 | `githubRepo` | `gtoGithubRepo` |
 | `curseforgeProjectId` | `gtoCurseforgeProjectId` |
-| `minecraftVersion` | `gtoCurseforgeMinecraftVersion` |
-| `curseforgeModLoader` | `gtoCurseforgeModLoader` |
+| `minecraftVersion` | `gtoMinecraftVersion` |
+| `modLoader` | `gtoModLoader` |
 | `curseforgeJavaVersion` | `gtoCurseforgeJavaVersion` |
 
 ## 凭证配置
@@ -185,7 +216,7 @@ GitHub Token 也支持环境变量 `GH_TOKEN` 或 `GITHUB_TOKEN`。
 |---|---|
 | `gtoValidate` | 校验凭证配置和版本号是否冲突 |
 | `gtoCheckMavenVersion` | 检查版本在 Maven 仓库中是否已存在 |
-| `gtoPublishMaven` | 暂存制品后以自定义路径上传到 Maven 仓库（`maven-publish` 生成 POM/checksums） |
+| `gtoPublishMaven` | 通过 `maven-publish` 发布到 Maven 仓库（archivesName 自动包含 modLoader 和 MC 版本） |
 | `gtoPublishGithub` | 创建 GitHub Release 并上传 JAR（包含 Maven 一致性校验） |
 | `gtoPublishCurseforge` | 上传 JAR 到 CurseForge（包含 Maven 一致性校验） |
 | `gtoPublish` | 总入口：validate → build → 所有启用目标 |

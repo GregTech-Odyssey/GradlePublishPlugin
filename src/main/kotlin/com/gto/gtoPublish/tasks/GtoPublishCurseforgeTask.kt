@@ -80,7 +80,7 @@ abstract class GtoPublishCurseforgeTask : DefaultTask() {
         } else {
             VersionChecker.requireMavenArtifactConsistent(
                 mavenRepoUrl.get(), projectGroup.get(), archivesName.get(),
-                minecraftVersion.get(), ver, mainJar, logger
+                ver, mainJar, logger
             )
         }
 
@@ -157,7 +157,7 @@ abstract class GtoPublishCurseforgeTask : DefaultTask() {
             mapOf(
                 "changelog" to "Release $ver",
                 "changelogType" to "markdown",
-                "displayName" to "${archivesName.get()}-${ver}.jar",
+                "displayName" to mainJar.name,
                 "gameVersions" to versionIds,
                 "releaseType" to releaseType
             )

@@ -52,8 +52,45 @@ object VersionChecker {
     }
 
     /**
-     * 通过 CurseForge API 验证 MC 版本号是否有效。
-     * 返回该版本在 CurseForge 上传 API 中对应的 game version ID。
+     * 通过 Mojang 官方 API 验证 MC 版本号是否有效。
+     */
+    fun validateMinecraftVersion(mcVersion: String, logger: Logger) {
+        val apiUrl = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
+        logger.lifecycle("  正在从 Mojang API 验证 MC 版本: $mcVersion ...")
+        val conn = URI(apiUrl).toURL().openConnection() as HttpURLConnection
+        conn.setRequestProperty("User-Agent", "GtoPublishPlugin")
+        conn.connectTimeout = 10000
+        conn.readTimeout = 10000
+        try {
+            if (conn.responseCode != 200) {
+                throw GradleException(
+                    "Mojang MC 版本 API 请求失败 / Mojang MC version API failed (${conn.responseCode})\n" +
+                        "详情请参阅 / See: $DOCS_URL"
+                )
+            }
+            val json = conn.inputStream.bufferedReader().readText()
+            // 响应格式: {"versions":[{"id":"26.1",...}, {"id":"1.21.5",...}]}
+            val versionRegex = Regex(""""id"\s*:\s*"([^"]+)"""")
+            val allVersions = versionRegex.findAll(json).map { it.groupValues[1] }.toSet()
+
+            if (mcVersion in allVersions) {
+                logger.lifecycle("  ✓ MC 版本 $mcVersion 有效 (Mojang)")
+            } else {
+                throw GradleException(
+                    "MC 版本 '$mcVersion' 在 Mojang 官方版本列表中不存在 / MC version not found in Mojang manifest\n" +
+                        "请检查 minecraftVersion 是否正确。\n" +
+                        "API: $apiUrl\n" +
+                        "详情请参阅 / See: $DOCS_URL"
+                )
+            }
+        } finally {
+            conn.disconnect()
+        }
+    }
+
+    /**
+     * 通过 CurseForge API 获取 MC 版本对应的 gameVersionId。
+     * 仅在 CurseForge 发布时使用。
      */
     fun fetchCurseForgeMinecraftVersionId(mcVersion: String, logger: Logger): Int {
         val apiUrl = "https://api.curseforge.com/v1/minecraft/version"
@@ -104,12 +141,11 @@ object VersionChecker {
         repoUrl: String,
         group: String,
         artifactId: String,
-        minecraftVersion: String,
         version: String,
         logger: Logger
     ) {
         val groupPath = group.replace('.', '/')
-        val pomUrl = "${repoUrl}/${groupPath}/${artifactId}/${minecraftVersion}/${version}/${artifactId}-${version}.pom"
+        val pomUrl = "${repoUrl}/${groupPath}/${artifactId}/${version}/${artifactId}-${version}.pom"
         try {
             val conn = URI(pomUrl).toURL().openConnection() as HttpURLConnection
             conn.requestMethod = "HEAD"
@@ -164,13 +200,12 @@ object VersionChecker {
         repoUrl: String,
         group: String,
         artifactId: String,
-        minecraftVersion: String,
         version: String,
         localJar: File,
         logger: Logger
     ) {
         val groupPath = group.replace('.', '/')
-        val jarUrl = "${repoUrl}/${groupPath}/${artifactId}/${minecraftVersion}/${version}/${artifactId}-${version}.jar"
+        val jarUrl = "${repoUrl}/${groupPath}/${artifactId}/${version}/${artifactId}-${version}.jar"
         val sha1Url = "${jarUrl}.sha1"
 
         // 1. 检查 Maven 上 JAR 是否存在

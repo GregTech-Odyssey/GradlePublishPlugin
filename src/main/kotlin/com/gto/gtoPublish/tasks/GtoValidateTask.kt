@@ -124,9 +124,9 @@ abstract class GtoValidateTask : DefaultTask() {
       └─ 获取方式: CurseForge 项目页面 → About This Project → Project ID"""
             }
             if (!curseforgeModLoader.isPresent || curseforgeModLoader.get().isBlank()) {
-                errors += """Missing: curseforgeModLoader
+                errors += """Missing: modLoader
       ┌─ 设置方式: 在 gtoPublish {} 扩展块中添加:
-      │    curseforgeModLoader = 'NeoForge'
+      │    modLoader = 'NeoForge'
       └─ 可选值: NeoForge, Forge, Fabric, Quilt 等"""
             }
             if (!curseforgeJavaVersion.isPresent || curseforgeJavaVersion.get().isBlank()) {
@@ -154,7 +154,7 @@ abstract class GtoValidateTask : DefaultTask() {
         if (enableMaven.get()) {
             try {
                 VersionChecker.checkMavenVersionNotExists(
-                    mavenRepoUrl.get(), projectGroup.get(), archivesName.get(), minecraftVersion.get(), ver, logger
+                    mavenRepoUrl.get(), projectGroup.get(), archivesName.get(), ver, logger
                 )
             } catch (e: GradleException) {
                 versionErrors += e.message ?: "Maven 版本冲突"

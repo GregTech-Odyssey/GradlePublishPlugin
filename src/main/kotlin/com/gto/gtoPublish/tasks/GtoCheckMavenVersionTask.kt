@@ -18,9 +18,6 @@ abstract class GtoCheckMavenVersionTask : DefaultTask() {
     abstract val archivesName: Property<String>
 
     @get:Input
-    abstract val minecraftVersion: Property<String>
-
-    @get:Input
     abstract val projectVersion: Property<String>
 
     init {
@@ -33,7 +30,7 @@ abstract class GtoCheckMavenVersionTask : DefaultTask() {
         val ver = projectVersion.get()
         VersionChecker.checkVersionFormat(ver)
         VersionChecker.checkMavenVersionNotExists(
-            mavenRepoUrl.get(), projectGroup.get(), archivesName.get(), minecraftVersion.get(), ver, logger
+            mavenRepoUrl.get(), projectGroup.get(), archivesName.get(), ver, logger
         )
         logger.lifecycle("\u2713 Maven 版本 $ver 可用")
     }

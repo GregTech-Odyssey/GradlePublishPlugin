@@ -32,8 +32,8 @@ abstract class GtoPublishExtension {
     /** Minecraft 版本号（必填，如 26.1） */
     abstract val minecraftVersion: Property<String>
 
-    /** CurseForge 模组加载器标签，如 NeoForge、Forge、Fabric 等 */
-    abstract val curseforgeModLoader: Property<String>
+    /** 模组加载器（必填，如 NeoForge、Forge、Fabric），小写后用于 artifactId 和文件名 */
+    abstract val modLoader: Property<String>
 
     /** CurseForge Java 版本标签，如 Java 25、Java 21 等 */
     abstract val curseforgeJavaVersion: Property<String>
@@ -45,7 +45,6 @@ abstract class GtoPublishExtension {
         mavenRepoName.convention("gtodysseyRepository")
         githubRepo.convention("")
         curseforgeProjectId.convention("")
-        curseforgeModLoader.convention("")
         curseforgeJavaVersion.convention("")
     }
 
