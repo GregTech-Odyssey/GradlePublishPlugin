@@ -4,6 +4,8 @@ import com.gto.gtoPublish.tasks.*
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.plugins.BasePluginExtension
+import org.gradle.api.publish.PublishingExtension
+import org.gradle.api.publish.maven.MavenPublication
 
 class GtoPublishPlugin : Plugin<Project> {
 
@@ -58,6 +60,16 @@ class GtoPublishPlugin : Plugin<Project> {
             val mavenArtifactId = "${originalArchivesName}-${modLoader}-${mcVersion}"
             baseExt.archivesName.set(mavenArtifactId)
             project.logger.lifecycle("archivesName: $originalArchivesName → $mavenArtifactId")
+
+            // 同时修改所有 MavenPublication 的 artifactId
+            // maven-publish 的 artifactId 默认取 project.name，不会跟随 archivesName
+            val publishing = project.extensions.findByType(PublishingExtension::class.java)
+            if (publishing != null) {
+                publishing.publications.withType(MavenPublication::class.java).configureEach { pub ->
+                    pub.artifactId = mavenArtifactId
+                    project.logger.lifecycle("  → Publication '${pub.name}' artifactId → $mavenArtifactId")
+                }
+            }
 
             // --- gtoValidate: 凭证 + 全局版本校验 ---
             project.tasks.register("gtoValidate", GtoValidateTask::class.java) { task ->

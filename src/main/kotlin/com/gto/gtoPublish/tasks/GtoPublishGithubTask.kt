@@ -57,16 +57,12 @@ abstract class GtoPublishGithubTask : DefaultTask() {
         if (skipMavenConsistencyCheck.getOrElse(false)) {
             logger.lifecycle("  ⏭ 跳过 Maven SHA-1 校验（Maven 已在本次构建中发布） / Skipping Maven SHA-1 check (published in same build)")
         } else {
-            val jarsForCheck = libsDir.listFiles()?.filter {
-                it.name.endsWith(".jar") &&
-                    !it.name.contains("-dev") &&
-                    !it.name.contains("-sources") &&
-                    !it.name.contains("-javadoc")
-            } ?: emptyList()
-            if (jarsForCheck.isNotEmpty()) {
+            val expectedJar = "${archivesName.get()}-${VersionChecker.displayVersion(ver)}.jar"
+            val jarForCheck = libsDir.listFiles()?.find { it.name == expectedJar }
+            if (jarForCheck != null) {
                 VersionChecker.requireMavenArtifactConsistent(
                     mavenRepoUrl.get(), projectGroup.get(), archivesName.get(),
-                    ver, jarsForCheck.first(), logger
+                    ver, jarForCheck, logger
                 )
             }
         }
@@ -110,17 +106,18 @@ abstract class GtoPublishGithubTask : DefaultTask() {
         val uploadUrl = match.groupValues[1].replace("{?name,label}", "")
         conn.disconnect()
 
-        // Upload JARs — only current version (exclude dev/sources/javadoc)
+        // Upload JARs — only current version, matching archivesName (exclude dev/sources/javadoc)
         val displayVer = VersionChecker.displayVersion(ver)
+        val artifactPrefix = "${archivesName.get()}-${displayVer}"
         val jars = libsDir.listFiles()?.filter {
             it.name.endsWith(".jar") &&
                 !it.name.contains("-dev") &&
                 !it.name.contains("-sources") &&
                 !it.name.contains("-javadoc") &&
-                (it.name.contains(displayVer))
+                it.name.startsWith(artifactPrefix)
         } ?: emptyList()
         if (jars.isEmpty()) {
-            throw GradleException("build/libs/ 下未找到匹配版本 $displayVer 的 JAR 文件 / No JAR matching version $displayVer found in build/libs/\n详情请参阅 / See: ${VersionChecker.DOCS_URL}")
+            throw GradleException("build/libs/ 下未找到匹配 '$artifactPrefix*.jar' 的文件 / No JAR matching '$artifactPrefix*.jar' found in build/libs/\n详情请参阅 / See: ${VersionChecker.DOCS_URL}")
         }
 
         for (jar in jars) {

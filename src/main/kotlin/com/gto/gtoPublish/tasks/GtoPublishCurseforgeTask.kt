@@ -66,13 +66,12 @@ abstract class GtoPublishCurseforgeTask : DefaultTask() {
         // MC 版本从 minecraft_version 属性读取
         val mcVersion = minecraftVersion.get()
 
-        // Find main JAR
-        val mainJar = libsDir.listFiles()?.filter {
-            it.name.endsWith(".jar") &&
-                !it.name.contains("-dev") &&
-                !it.name.contains("-sources") &&
-                !it.name.contains("-javadoc")
-        }?.firstOrNull() ?: throw GradleException("build/libs/ 下未找到 JAR 文件 / No JAR found in build/libs/\n详情请参阅 / See: ${VersionChecker.DOCS_URL}")
+        // Find main JAR — must match archivesName + version
+        val displayVer = VersionChecker.displayVersion(ver)
+        val expectedName = "${archivesName.get()}-${displayVer}.jar"
+        val mainJar = libsDir.listFiles()?.find {
+            it.name == expectedName
+        } ?: throw GradleException("build/libs/ 下未找到 '$expectedName' / Expected JAR '$expectedName' not found in build/libs/\n详情请参阅 / See: ${VersionChecker.DOCS_URL}")
 
         // 强制校验 Maven 制品存在且与本地一致（一键流中 Maven 刚发布则跳过）
         if (skipMavenConsistencyCheck.getOrElse(false)) {
@@ -84,16 +83,13 @@ abstract class GtoPublishCurseforgeTask : DefaultTask() {
             )
         }
 
-        // 通过 CurseForge API 自动获取 MC 版本对应的 gameVersionId
-        val mcGameVersionId = VersionChecker.fetchCurseForgeMinecraftVersionId(mcVersion, logger)
-
-        // 解析模组加载器和 Java 版本标签
-        val allTags = listOf(cfModLoader, cfJavaVersion)
-        logger.lifecycle("  正在解析 CurseForge 版本标签: 模组加载器=$cfModLoader, Java版本=$cfJavaVersion ...")
+        // 从 CurseForge Upload API 获取所有游戏版本（MC、modLoader、Java）
+        logger.lifecycle("  正在从 CurseForge API 获取游戏版本列表 ...")
         val versionsConn = URI("https://minecraft.curseforge.com/api/game/versions")
             .toURL().openConnection() as HttpURLConnection
         versionsConn.setRequestProperty("X-Api-Token", cfToken)
         versionsConn.setRequestProperty("User-Agent", "GtoPublishPlugin")
+        versionsConn.setRequestProperty("Accept", "application/json")
         versionsConn.connectTimeout = 10000
         versionsConn.readTimeout = 10000
 
@@ -101,16 +97,11 @@ abstract class GtoPublishCurseforgeTask : DefaultTask() {
         if (versionsResponseCode != 200) {
             val errorBody = versionsConn.errorStream?.bufferedReader()?.readText() ?: "unknown"
             versionsConn.disconnect()
-            if (versionsResponseCode == 403) {
-                throw GradleException(
-                    "CurseForge API 返回 403 Forbidden，请检查 Token 是否正确且具有上传权限\n" +
-                    "CurseForge API returned 403 Forbidden. Verify your token is valid and has upload permissions.\n" +
-                    "Token 获取地址 / Get token at: https://www.curseforge.com/account/api-tokens\n" +
-                    "详情请参阅 / See: ${VersionChecker.DOCS_URL}"
-                )
-            }
             throw GradleException(
-                "CurseForge 游戏版本 API 请求失败 / CurseForge game versions API failed ($versionsResponseCode): $errorBody\n" +
+                "CurseForge 游戏版本 API 请求失败 ($versionsResponseCode): $errorBody\n" +
+                "CurseForge game versions API failed.\n" +
+                "请确认 Token 有效且具有上传权限。\n" +
+                "Token 获取地址 / Get token at: https://authors.curseforge.com/account/api-tokens\n" +
                 "详情请参阅 / See: ${VersionChecker.DOCS_URL}"
             )
         }
@@ -120,34 +111,22 @@ abstract class GtoPublishCurseforgeTask : DefaultTask() {
         val listType = object : TypeToken<List<Map<String, Any>>>() {}.type
         val allVersions: List<Map<String, Any>> = Gson().fromJson(allVersionsText, listType)
 
-        // MC 版本 ID (从上传 API 的版本列表中查找)
+        // 从同一个响应中查找 MC 版本、modLoader、Java 版本的 ID
+        val allTargets = listOf(mcVersion, cfModLoader, cfJavaVersion)
         val versionIds = mutableListOf<Int>()
-        val mcMatched = allVersions.find { it["name"] == mcVersion }
-        if (mcMatched != null) {
-            versionIds += (mcMatched["id"] as Double).toInt()
-            logger.lifecycle("  ✓ MC 版本 $mcVersion → ID ${versionIds.last()}")
-        } else {
-            // 使用 CurseForge v1 API 返回的 gameVersionId 作为后备
-            versionIds += mcGameVersionId
-            logger.lifecycle("  ✓ MC 版本 $mcVersion → gameVersionId $mcGameVersionId (via v1 API)")
-        }
 
-        // 模组加载器和 Java 版本标签
-        for (target in allTags) {
+        for (target in allTargets) {
             val matched = allVersions.find { it["name"] == target }
             if (matched != null) {
                 versionIds += (matched["id"] as Double).toInt()
                 logger.lifecycle("  ✓ $target → ID ${versionIds.last()}")
             } else {
                 throw GradleException(
-                    "无法解析 CurseForge 游戏版本标签: '$target'\n" +
-                    "Failed to resolve CurseForge game version tag: '$target'\n" +
+                    "无法在 CurseForge 游戏版本列表中找到: '$target'\n" +
+                    "Failed to resolve CurseForge game version: '$target'\n" +
                     "详情请参阅 / See: ${VersionChecker.DOCS_URL}"
                 )
             }
-        }
-        if (versionIds.isEmpty()) {
-            throw GradleException("无法解析任何 CurseForge 游戏版本 ID / Failed to resolve any CurseForge game version ID\n详情请参阅 / See: ${VersionChecker.DOCS_URL}")
         }
 
         // Upload via multipart

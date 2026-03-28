@@ -88,55 +88,6 @@ object VersionChecker {
         }
     }
 
-    /**
-     * 通过 CurseForge API 获取 MC 版本对应的 gameVersionId。
-     * 仅在 CurseForge 发布时使用。
-     */
-    fun fetchCurseForgeMinecraftVersionId(mcVersion: String, logger: Logger): Int {
-        val apiUrl = "https://api.curseforge.com/v1/minecraft/version"
-        logger.lifecycle("  正在从 CurseForge API 验证 MC 版本: $mcVersion ...")
-        val conn = URI(apiUrl).toURL().openConnection() as HttpURLConnection
-        conn.setRequestProperty("User-Agent", "GtoPublishPlugin")
-        conn.connectTimeout = 10000
-        conn.readTimeout = 10000
-        try {
-            if (conn.responseCode != 200) {
-                throw GradleException(
-                    "CurseForge MC 版本 API 请求失败 / CurseForge MC version API failed (${conn.responseCode})\n" +
-                        "详情请参阅 / See: $DOCS_URL"
-                )
-            }
-            val json = conn.inputStream.bufferedReader().readText()
-            // 响应格式: {"data":[{"id":101,"gameVersionId":15933,"versionString":"26.1",...}, ...]}
-            val dataRegex = Regex(""""versionString"\s*:\s*"([^"]+)"[^}]*?"gameVersionId"\s*:\s*(\d+)""")
-            // 也尝试反向字段顺序
-            val dataRegex2 = Regex(""""gameVersionId"\s*:\s*(\d+)[^}]*?"versionString"\s*:\s*"([^"]+)"""")
-
-            for (match in dataRegex.findAll(json)) {
-                if (match.groupValues[1] == mcVersion) {
-                    val gameVersionId = match.groupValues[2].toInt()
-                    logger.lifecycle("  ✓ MC 版本 $mcVersion 有效 (CurseForge gameVersionId: $gameVersionId)")
-                    return gameVersionId
-                }
-            }
-            for (match in dataRegex2.findAll(json)) {
-                if (match.groupValues[2] == mcVersion) {
-                    val gameVersionId = match.groupValues[1].toInt()
-                    logger.lifecycle("  ✓ MC 版本 $mcVersion 有效 (CurseForge gameVersionId: $gameVersionId)")
-                    return gameVersionId
-                }
-            }
-
-            throw GradleException(
-                "MC 版本 '$mcVersion' 在 CurseForge 上不存在 / MC version not found on CurseForge\n" +
-                    "请检查 mod_version 中的 MC 版本号是否正确。\n" +
-                    "详情请参阅 / See: $DOCS_URL"
-            )
-        } finally {
-            conn.disconnect()
-        }
-    }
-
     fun checkMavenVersionNotExists(
         repoUrl: String,
         group: String,
