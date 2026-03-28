@@ -53,7 +53,7 @@ pluginManagement {
 
 // build.gradle
 plugins {
-    id 'com.gto.gtopublishgradleplugin' version '1.0.0'
+    id 'com.gto.gtopublishgradleplugin' version '1.0.14'
 }
 ```
 
