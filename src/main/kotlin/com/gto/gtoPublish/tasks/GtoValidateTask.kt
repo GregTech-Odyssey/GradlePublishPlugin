@@ -164,7 +164,10 @@ abstract class GtoValidateTask : DefaultTask() {
         if (enableGithub.get() && githubRepo.isPresent && githubToken.isPresent) {
             try {
                 VersionChecker.checkGithubReleaseNotExists(
-                    githubRepo.get(), githubToken.get(), ver, logger
+                    githubRepo.get(),
+                    githubToken.get(),
+                    VersionChecker.githubReleaseVersion(archivesName.get(), ver),
+                    logger
                 )
             } catch (e: GradleException) {
                 versionErrors += e.message ?: "GitHub 版本冲突"

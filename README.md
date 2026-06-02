@@ -14,7 +14,7 @@
 
 3. **版本号格式**需符合 `x.x.x[-alpha|-beta|-release]`（见下方 [版本格式](#版本格式) 章节）
 
-> **注意**：本插件会自动将 `archivesName` 修改为 `{name}-{modLoader}-{mcVersion}`（modLoader 自动小写）。例如 `archivesName = 'registrylib'` + `modLoader = 'NeoForge'` + `minecraftVersion = '26.1'` → `registrylib-neoforge-26.1`。本地 JAR、Maven、GitHub、CurseForge 所有文件名统一为 `registrylib-neoforge-26.1-x.x.x.jar`。消费者引用：`implementation("com.gto:registrylib-neoforge-26.1:7.0.8")`。
+> **注意**：本插件会自动将 `archivesName` 修改为 `{name}-{modLoader}-{mcVersion}`（modLoader 自动小写）。例如 `archivesName = 'registrylib'` + `modLoader = 'NeoForge'` + `minecraftVersion = '26.1'` → `registrylib-neoforge-26.1`。本地 JAR、Maven、GitHub、CurseForge 所有文件名统一为 `registrylib-neoforge-26.1-x.x.x.jar`。GitHub Release 的 tag/name 使用 `{modLoader}-{mcVersion}-{version}`，例如 `neoforge-26.1-7.0.8`。消费者引用：`implementation("com.gto:registrylib-neoforge-26.1:7.0.8")`。
 
 ## 安装
 
@@ -85,6 +85,8 @@ gtoPublish {
 
 本地 JAR：`build/libs/registrylib-neoforge-26.1-7.0.8.jar`
 
+GitHub Release tag/name：`neoforge-26.1-7.0.8`
+
 消费者引用方式：`implementation("com.gto:registrylib-neoforge-26.1:7.0.8")`
 
 ### 完整配置示例
@@ -137,6 +139,8 @@ gtoPublish {
 
 发布后，所有文件名统一为 `my-mod-neoforge-26.1-0.0.2.jar`：
 `https://maven.gtodyssey.com/releases/com/gto/my-mod-neoforge-26.1/0.0.2/my-mod-neoforge-26.1-0.0.2.jar`
+
+GitHub Release tag/name：`neoforge-26.1-0.0.2`
 
 消费者引用：`implementation("com.gto:my-mod-neoforge-26.1:0.0.2")`
 

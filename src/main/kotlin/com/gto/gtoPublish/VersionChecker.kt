@@ -51,6 +51,14 @@ object VersionChecker {
         return version.removeSuffix("-release")
     }
 
+    fun githubReleaseVersion(archivesName: String, version: String): String {
+        val platformVersion = archivesName
+            .split("-")
+            .takeLast(2)
+            .joinToString("-")
+        return "${platformVersion}-${displayVersion(version)}"
+    }
+
     /**
      * 通过 Mojang 官方 API 验证 MC 版本号是否有效。
      */
@@ -131,7 +139,7 @@ object VersionChecker {
             conn.readTimeout = 10000
             try {
                 if (conn.responseCode == 200) {
-                    throw GradleException("GitHub Release '${version}' 已存在 / Release already exists\n请先修改 gradle.properties 中的 mod_version 再发布。\n详情请参阅 / See: $DOCS_URL")
+                    throw GradleException("GitHub Release '${version}' 已存在 / Release already exists\n请先修改 gradle.properties 中的 mod_version，或检查 modLoader/minecraftVersion 后再发布。\n详情请参阅 / See: $DOCS_URL")
                 }
             } finally {
                 conn.disconnect()

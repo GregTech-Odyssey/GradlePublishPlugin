@@ -49,9 +49,10 @@ abstract class GtoPublishGithubTask : DefaultTask() {
         val ver = projectVersion.get()
         val ghToken = githubToken.get()
         val ghRepo = githubRepo.get()
+        val releaseVer = VersionChecker.githubReleaseVersion(archivesName.get(), ver)
 
         // 发布前强制检查版本是否已存在
-        VersionChecker.checkGithubReleaseNotExists(ghRepo, ghToken, ver, logger)
+        VersionChecker.checkGithubReleaseNotExists(ghRepo, ghToken, releaseVer, logger)
 
         // 强制校验 Maven 制品存在且与本地一致（一键流中 Maven 刚发布则跳过）
         if (skipMavenConsistencyCheck.getOrElse(false)) {
@@ -85,9 +86,9 @@ abstract class GtoPublishGithubTask : DefaultTask() {
         }
         val body = Gson().toJson(
             mapOf(
-                "tag_name" to ver,
-                "name" to "${label} ${ver}".trim(),
-                "body" to "Release $ver ($releaseType)",
+                "tag_name" to releaseVer,
+                "name" to "${label} ${releaseVer}".trim(),
+                "body" to "Release $releaseVer ($releaseType)",
                 "draft" to false,
                 "prerelease" to isPreRelease
             )
@@ -138,6 +139,6 @@ abstract class GtoPublishGithubTask : DefaultTask() {
             }
             uc.disconnect()
         }
-        logger.lifecycle("\u2713 GitHub Release $ver 已创建")
+        logger.lifecycle("\u2713 GitHub Release $releaseVer 已创建")
     }
 }
