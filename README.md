@@ -12,7 +12,7 @@
 
 2. **配置凭证**（见下方 [凭证配置](#凭证配置) 章节）
 
-3. **版本号格式**需符合 `x.x.x[-alpha|-beta|-release]`（见下方 [版本格式](#版本格式) 章节）
+3. **版本号格式**需符合 `x.x.x[-suffix]`（见下方 [版本格式](#版本格式) 章节）
 
 > **注意**：本插件会自动将 `archivesName` 修改为 `{name}-{modLoader}-{mcVersion}`（modLoader 自动小写）。例如 `archivesName = 'registrylib'` + `modLoader = 'NeoForge'` + `minecraftVersion = '26.1'` → `registrylib-neoforge-26.1`。本地 JAR、Maven、GitHub、CurseForge 所有文件名统一为 `registrylib-neoforge-26.1-x.x.x.jar`。GitHub Release 的 tag/name 使用 `{modLoader}-{mcVersion}-{version}`，例如 `neoforge-26.1-7.0.8`。消费者引用：`implementation("com.gto:registrylib-neoforge-26.1:7.0.8")`。
 
@@ -37,10 +37,12 @@ plugins {
 
 ## 版本格式
 
-项目版本必须符合 `x.x.x[-alpha|-beta|-release]` 格式：
+项目版本必须符合 `x.x.x[-suffix]` 格式：
 
 - `x.x.x`：三段数字版本号
-- 发布类型：`-alpha`、`-beta`、`-release` 或省略（省略等同于 `-release`）
+- `suffix`：仅允许小写字母、数字和连字符
+- `-alpha`、`-beta`、`-release` 或省略为发布版本（省略等同于 `-release`）
+- 其他后缀为分支版本；执行 `gtoPublish` 时仅发布到 Maven，不创建 GitHub Release，也不上传 CurseForge
 
 | 版本号示例 | 实际发布版本 | 类型 | GitHub 行为 | CurseForge `releaseType` |
 |---|---|---|---|---|
@@ -48,6 +50,7 @@ plugins {
 | `1.0.0-beta` | `1.0.0-beta` | Beta | Pre-release，名称前缀 `[Beta]` | `beta` |
 | `1.0.0-release` | `1.0.0` | Release | 正式发布 | `release` |
 | `1.0.0` | `1.0.0` | Release | 正式发布 | `release` |
+| `1.0.0-feature-login` | `1.0.0-feature-login` | 分支版本 | 不发布 | 不发布 |
 
 > **注意**：`-release` 后缀会自动从所有发布产物的文件名和版本号中去除。
 

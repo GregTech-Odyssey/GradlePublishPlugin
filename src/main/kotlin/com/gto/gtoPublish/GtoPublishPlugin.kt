@@ -31,6 +31,7 @@ class GtoPublishPlugin : Plugin<Project> {
             val originalVersion = project.version.toString()
             VersionChecker.checkVersionFormat(originalVersion)
             val displayVer = VersionChecker.displayVersion(originalVersion)
+            val branchVersion = VersionChecker.isBranchVersion(originalVersion)
 
             // 将 project.version 设为显示版本（去除 -release）
             // 这样 assemble 产生的 JAR、Maven 发布的制品都不包含 -release
@@ -38,9 +39,15 @@ class GtoPublishPlugin : Plugin<Project> {
             project.logger.lifecycle("版本: $originalVersion → 显示版本: $displayVer")
 
             val enableMaven = ext.publishMaven.get()
-            val enableGithub = ext.publishGithub.get()
-            val enableCurseforge = ext.publishCurseforge.get()
+            val enableGithub = ext.publishGithub.get() && !branchVersion
+            val enableCurseforge = ext.publishCurseforge.get() && !branchVersion
             val repoName = ext.mavenRepoName.get()
+
+            if (branchVersion) {
+                project.logger.lifecycle(
+                    "分支版本 $originalVersion：仅发布到 Maven，跳过 GitHub Release 和 CurseForge"
+                )
+            }
 
             // 解析 mavenRepoUrl 简写为完整 URL
             if (ext.mavenRepoUrl.isPresent) {
@@ -74,8 +81,8 @@ class GtoPublishPlugin : Plugin<Project> {
             // --- gtoValidate: 凭证 + 全局版本校验 ---
             project.tasks.register("gtoValidate", GtoValidateTask::class.java) { task ->
                 task.enableMaven.set(ext.publishMaven)
-                task.enableGithub.set(ext.publishGithub)
-                task.enableCurseforge.set(ext.publishCurseforge)
+                task.enableGithub.set(enableGithub)
+                task.enableCurseforge.set(enableCurseforge)
                 task.mavenRepoName.set(ext.mavenRepoName)
                 task.mavenRepoUrl.set(ext.mavenRepoUrl)
                 task.projectVersion.set(project.provider { project.version.toString() })

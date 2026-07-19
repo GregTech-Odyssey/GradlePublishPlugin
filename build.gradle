@@ -6,7 +6,7 @@ plugins {
 
 group = 'com.gto'
 
-// 插件版本号: 支持 x.x.x-release/alpha/beta 格式，-release 后缀自动去除
+// 插件版本号: 支持 x.x.x[-suffix] 格式，-release 后缀自动去除
 def pluginVersion = findProperty('gto_plugin_version') ?: '1.0.0-release'
 version = pluginVersion.toString().replaceAll(/-release$/, '')
 

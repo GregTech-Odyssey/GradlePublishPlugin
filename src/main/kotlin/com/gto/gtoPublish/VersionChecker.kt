@@ -12,23 +12,30 @@ object VersionChecker {
     const val DOCS_URL = "https://github.com/GregTech-Odyssey/GradlePublishPlugin"
 
     /**
-     * 版本格式: x.x.x(-releaseType)?
+     * 版本格式: x.x.x(-suffix)?
      * x.x.x: 恰好三段数字
-     * releaseType: alpha / beta / release / 空
+     * suffix: 小写字母、数字或连字符
      *
-     * 示例: 1.0.0-release, 2.3.1-beta, 1.0.0
+     * alpha / beta / release 为发布版本，其余 suffix 为分支版本。
      */
-    private val VERSION_REGEX = Regex("""^(\d+\.\d+\.\d+)(-(alpha|beta|release))?$""")
+    private val VERSION_REGEX = Regex("""^(\d+\.\d+\.\d+)(?:-([a-z0-9-]+))?$""")
+    private val RELEASE_TYPES = setOf("alpha", "beta", "release")
 
     fun checkVersionFormat(version: String) {
         if (!VERSION_REGEX.matches(version)) {
             throw GradleException(
                 "mod_version '${version}' 不是合法的版本号格式 / Invalid version format\n" +
-                    "要求格式 / Required: x.x.x[-alpha|-beta|-release]\n" +
-                    "示例 / Examples: 1.0.0-release, 2.3.1-beta, 1.0.0\n" +
+                    "要求格式 / Required: x.x.x[-suffix], suffix 仅可包含 a-z、0-9、-\n" +
+                    "示例 / Examples: 1.0.0-release, 2.3.1-beta, 1.0.0-feature-login\n" +
                     "详情请参阅 / See: $DOCS_URL"
             )
         }
+    }
+
+    /** 非标准发布类型的后缀表示分支版本，只发布到 Maven。 */
+    fun isBranchVersion(version: String): Boolean {
+        val suffix = VERSION_REGEX.matchEntire(version)?.groupValues?.get(2).orEmpty()
+        return suffix.isNotEmpty() && suffix !in RELEASE_TYPES
     }
 
     /**
@@ -37,7 +44,7 @@ object VersionChecker {
      */
     fun parseReleaseType(version: String): String {
         val match = VERSION_REGEX.matchEntire(version) ?: return "release"
-        val type = match.groupValues[3]
+        val type = match.groupValues[2]
         return if (type.isNotEmpty()) type else "release"
     }
 
