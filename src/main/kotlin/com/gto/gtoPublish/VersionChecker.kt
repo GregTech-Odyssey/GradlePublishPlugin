@@ -25,9 +25,9 @@ object VersionChecker {
         if (!VERSION_REGEX.matches(version)) {
             throw GradleException(
                 "mod_version '${version}' 不是合法的版本号格式 / Invalid version format\n" +
-                    "要求格式 / Required: x.x.x[-suffix], suffix 仅可包含 a-z、0-9、-\n" +
-                    "示例 / Examples: 1.0.0-release, 2.3.1-beta, 1.0.0-feature-login\n" +
-                    "详情请参阅 / See: $DOCS_URL"
+                        "要求格式 / Required: x.x.x[-suffix], suffix 仅可包含 a-z、0-9、-\n" +
+                        "示例 / Examples: 1.0.0-release, 2.3.1-beta, 1.0.0-feature-login\n" +
+                        "详情请参阅 / See: $DOCS_URL"
             )
         }
     }
@@ -80,7 +80,7 @@ object VersionChecker {
             if (conn.responseCode != 200) {
                 throw GradleException(
                     "Mojang MC 版本 API 请求失败 / Mojang MC version API failed (${conn.responseCode})\n" +
-                        "详情请参阅 / See: $DOCS_URL"
+                            "详情请参阅 / See: $DOCS_URL"
                 )
             }
             val json = conn.inputStream.bufferedReader().readText()
@@ -93,9 +93,9 @@ object VersionChecker {
             } else {
                 throw GradleException(
                     "MC 版本 '$mcVersion' 在 Mojang 官方版本列表中不存在 / MC version not found in Mojang manifest\n" +
-                        "请检查 minecraftVersion 是否正确。\n" +
-                        "API: $apiUrl\n" +
-                        "详情请参阅 / See: $DOCS_URL"
+                            "请检查 minecraftVersion 是否正确。\n" +
+                            "API: $apiUrl\n" +
+                            "详情请参阅 / See: $DOCS_URL"
                 )
             }
         } finally {
@@ -185,9 +185,9 @@ object VersionChecker {
                 if (headConn.responseCode != 200) {
                     throw GradleException(
                         "Maven 仓库中不存在版本 '${version}' 的制品 / Artifact not found in Maven\n" +
-                            "  URL: $jarUrl\n" +
-                            "  请先执行 gtoPublishMaven 将制品发布到 Maven 后，再发布到其他平台。\n" +
-                            "  详情请参阅 / See: $DOCS_URL"
+                                "  URL: $jarUrl\n" +
+                                "  请先执行 gtoPublishMaven 将制品发布到 Maven 后，再发布到其他平台。\n" +
+                                "  详情请参阅 / See: $DOCS_URL"
                     )
                 }
             } finally {
@@ -232,10 +232,10 @@ object VersionChecker {
         if (!localSha1.equals(remoteSha1, ignoreCase = true)) {
             throw GradleException(
                 "本地 JAR 与 Maven 仓库中的制品 SHA-1 不一致！ / SHA-1 mismatch\n" +
-                    "  本地 / Local:  $localSha1\n" +
-                    "  Maven:         $remoteSha1\n" +
-                    "  请确保使用与 Maven 发布时相同的构建产物。\n" +
-                    "  详情请参阅 / See: $DOCS_URL"
+                        "  本地 / Local:  $localSha1\n" +
+                        "  Maven:         $remoteSha1\n" +
+                        "  请确保使用与 Maven 发布时相同的构建产物。\n" +
+                        "  详情请参阅 / See: $DOCS_URL"
             )
         }
         logger.lifecycle("  \u2713 SHA-1 校验通过，本地制品与 Maven 一致")
@@ -313,22 +313,22 @@ object VersionChecker {
                 if (latestVersion != currentVersion) {
                     throw GradleException(
                         "\n" +
-                            "╔══════════════════════════════════════════════════════════════╗\n" +
-                            "║       GTO Publish Plugin — 版本过期 / Outdated Version       ║\n" +
-                            "╠══════════════════════════════════════════════════════════════╣\n" +
-                            "║                                                              ║\n" +
-                            "║  当前版本 / Current : $currentVersion\n" +
-                            "║  最新版本 / Latest  : $latestVersion\n" +
-                            "║                                                              ║\n" +
-                            "║  所有发布功能已禁用，请先升级插件。                          ║\n" +
-                            "║  All publish features are disabled. Please upgrade first.    ║\n" +
-                            "║                                                              ║\n" +
-                            "║  修改 build.gradle / Update build.gradle:                    ║\n" +
-                            "║  id 'com.gto.gtopublishgradleplugin' version '$latestVersion'\n" +
-                            "║                                                              ║\n" +
-                            "║  文档 / Docs: $DOCS_URL\n" +
-                            "║                                                              ║\n" +
-                            "╚══════════════════════════════════════════════════════════════╝"
+                                "╔══════════════════════════════════════════════════════════════╗\n" +
+                                "║       GTO Publish Plugin — 版本过期 / Outdated Version       ║\n" +
+                                "╠══════════════════════════════════════════════════════════════╣\n" +
+                                "║                                                              ║\n" +
+                                "║  当前版本 / Current : $currentVersion\n" +
+                                "║  最新版本 / Latest  : $latestVersion\n" +
+                                "║                                                              ║\n" +
+                                "║  所有发布功能已禁用，请先升级插件。                          ║\n" +
+                                "║  All publish features are disabled. Please upgrade first.    ║\n" +
+                                "║                                                              ║\n" +
+                                "║  修改 build.gradle / Update build.gradle:                    ║\n" +
+                                "║  id 'com.gto.gtopublishgradleplugin' version '$latestVersion'\n" +
+                                "║                                                              ║\n" +
+                                "║  文档 / Docs: $DOCS_URL\n" +
+                                "║                                                              ║\n" +
+                                "╚══════════════════════════════════════════════════════════════╝"
                     )
                 }
                 logger.lifecycle(

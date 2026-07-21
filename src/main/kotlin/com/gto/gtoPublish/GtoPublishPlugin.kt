@@ -102,6 +102,7 @@ class GtoPublishPlugin : Plugin<Project> {
                 task.curseforgeProjectId.set(ext.curseforgeProjectId)
                 task.curseforgeModLoader.set(ext.modLoader)
                 task.curseforgeJavaVersion.set(ext.curseforgeJavaVersion)
+                task.curseforgeEnvironment.set(ext.curseforgeEnvironment)
                 task.minecraftVersion.set(ext.minecraftVersion)
             }
 
@@ -192,6 +193,7 @@ class GtoPublishPlugin : Plugin<Project> {
                     task.minecraftVersion.set(ext.minecraftVersion)
                     task.modLoader.set(ext.modLoader)
                     task.javaVersion.set(ext.curseforgeJavaVersion)
+                    task.environment.set(ext.curseforgeEnvironment)
                     task.archivesName.set(project.provider { mavenArtifactId })
                     task.mavenRepoUrl.set(ext.mavenRepoUrl)
                     task.projectGroup.set(project.provider { project.group.toString() })
@@ -256,6 +258,9 @@ class GtoPublishPlugin : Plugin<Project> {
         }
         project.findProperty("gtoCurseforgeJavaVersion")?.let {
             ext.curseforgeJavaVersion.set(it.toString())
+        }
+        project.findProperty("gtoCurseforgeEnvironment")?.let {
+            ext.curseforgeEnvironment.set(it.toString())
         }
     }
 

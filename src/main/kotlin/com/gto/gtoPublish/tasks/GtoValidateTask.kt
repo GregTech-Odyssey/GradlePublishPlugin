@@ -1,5 +1,6 @@
 package com.gto.gtoPublish.tasks
 
+import com.gto.gtoPublish.GtoPublishExtension
 import com.gto.gtoPublish.VersionChecker
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
@@ -60,6 +61,9 @@ abstract class GtoValidateTask : DefaultTask() {
 
     @get:Input @get:Optional
     abstract val curseforgeJavaVersion: Property<String>
+
+    @get:Input @get:Optional
+    abstract val curseforgeEnvironment: Property<String>
 
     init {
         group = "gto publishing"
@@ -134,6 +138,19 @@ abstract class GtoValidateTask : DefaultTask() {
       ┌─ 设置方式: 在 gtoPublish {} 扩展块中添加:
       │    curseforgeJavaVersion = 'Java 25'
       └─ 可选值: Java 8, Java 17, Java 21, Java 25 等"""
+            }
+            val envValue = if (curseforgeEnvironment.isPresent) curseforgeEnvironment.get() else ""
+            if (envValue.isBlank()) {
+                errors += """Missing: curseforgeEnvironment
+      ┌─ 设置方式: 在 gtoPublish {} 扩展块中添加:
+      │    curseforgeEnvironment = 'both'
+      └─ 可选值: both（双端）, client（仅客户端）, server（仅服务端）"""
+            } else {
+                try {
+                    GtoPublishExtension.resolveEnvironmentVersions(envValue)
+                } catch (e: GradleException) {
+                    errors += e.message ?: "Invalid curseforgeEnvironment: $envValue"
+                }
             }
         }
 

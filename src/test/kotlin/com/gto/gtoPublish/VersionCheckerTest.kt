@@ -46,6 +46,15 @@ class VersionCheckerTest {
     }
 
     @Test
+    fun `compares semantic plugin versions`() {
+        assertTrue(VersionChecker.compareVersions("1.0.24", "1.0.23") > 0)
+        assertTrue(VersionChecker.compareVersions("1.0.23", "1.0.24") < 0)
+        assertEquals(0, VersionChecker.compareVersions("1.0.23", "1.0.23"))
+        assertTrue(VersionChecker.compareVersions("1.0.0", "1.0.0-beta") > 0)
+        assertTrue(VersionChecker.compareVersions("1.0.0-alpha", "1.0.0-beta") < 0)
+    }
+
+    @Test
     fun `keeps release type parsing unchanged`() {
         assertEquals("release", VersionChecker.parseReleaseType("1.2.3"))
         assertEquals("alpha", VersionChecker.parseReleaseType("1.2.3-alpha"))

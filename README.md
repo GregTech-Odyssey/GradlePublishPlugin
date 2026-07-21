@@ -31,7 +31,7 @@ pluginManagement {
 
 // build.gradle
 plugins {
-    id 'com.gto.gtopublishgradleplugin' version '1.0.14'
+    id 'com.gto.gtopublishgradleplugin' version '1.0.24'
 }
 ```
 
@@ -70,8 +70,19 @@ gtoPublish {
     githubRepo        = 'owner/repo-name'      // GitHub 仓库（启用 GitHub 发布时必填）
     curseforgeProjectId   = '123456'    // CurseForge 项目 ID（启用 CurseForge 时必填）
     curseforgeJavaVersion = 'Java 25'   // Java 版本（启用 CurseForge 时必填，如 Java 8, Java 17, Java 21, Java 25）
+    curseforgeEnvironment = 'both'      // Environment 组（默认 both）：both / client / server
 }
 ```
+
+`curseforgeEnvironment` 对应 CurseForge 上传时的 **Environment** 版本组（API 必填，否则 error 1021）：
+
+| 配置值 | 上传到 CurseForge 的 gameVersions | 适用场景 |
+|---|---|---|
+| `both`（默认） | Client + Server | 双端模组 |
+| `client` | Client | 仅客户端模组 |
+| `server` | Server | 仅服务端模组 |
+
+别名：`client-only`、`server-only`、`client-server`、`all`（等同 `both`）。
 
 `mavenRepoUrl` 支持以下简写值：
 
@@ -135,6 +146,7 @@ gtoPublish {
     githubRepo        = 'GregTech-Odyssey/my-mod'
     curseforgeProjectId   = '123456'
     curseforgeJavaVersion = 'Java 25'
+    curseforgeEnvironment = 'both'   // 双端；客户端模组用 'client'，服务端用 'server'
 }
 ```
 
@@ -163,6 +175,7 @@ GitHub Release tag/name：`neoforge-26.1-0.0.2`
 | `minecraftVersion` | `gtoMinecraftVersion` |
 | `modLoader` | `gtoModLoader` |
 | `curseforgeJavaVersion` | `gtoCurseforgeJavaVersion` |
+| `curseforgeEnvironment` | `gtoCurseforgeEnvironment` |
 
 ## 凭证配置
 

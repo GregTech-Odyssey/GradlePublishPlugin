@@ -2,6 +2,7 @@ package com.gto.gtoPublish.tasks
 
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.gto.gtoPublish.GtoPublishExtension
 import com.gto.gtoPublish.VersionChecker
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
@@ -34,6 +35,9 @@ abstract class GtoPublishCurseforgeTask : DefaultTask() {
 
     @get:Input
     abstract val javaVersion: Property<String>
+
+    @get:Input
+    abstract val environment: Property<String>
 
     @get:Input
     abstract val archivesName: Property<String>
@@ -83,7 +87,13 @@ abstract class GtoPublishCurseforgeTask : DefaultTask() {
             )
         }
 
-        // 从 CurseForge Upload API 获取所有游戏版本（MC、modLoader、Java）
+        // Environment 组（Client / Server）— CurseForge API 必填，否则 400 error 1021
+        val environmentTargets = GtoPublishExtension.resolveEnvironmentVersions(environment.get())
+        logger.lifecycle(
+            "  Environment: ${environment.get()} → ${environmentTargets.joinToString(", ")}"
+        )
+
+        // 从 CurseForge Upload API 获取所有游戏版本（MC、modLoader、Java、Environment）
         logger.lifecycle("  正在从 CurseForge API 获取游戏版本列表 ...")
         val versionsConn = URI("https://minecraft.curseforge.com/api/game/versions")
             .toURL().openConnection() as HttpURLConnection
@@ -111,8 +121,8 @@ abstract class GtoPublishCurseforgeTask : DefaultTask() {
         val listType = object : TypeToken<List<Map<String, Any>>>() {}.type
         val allVersions: List<Map<String, Any>> = Gson().fromJson(allVersionsText, listType)
 
-        // 从同一个响应中查找 MC 版本、modLoader、Java 版本的 ID
-        val allTargets = listOf(mcVersion, cfModLoader, cfJavaVersion)
+        // MC + Loader + Java + Environment（Client / Server）
+        val allTargets = listOf(mcVersion, cfModLoader, cfJavaVersion) + environmentTargets
         val versionIds = mutableListOf<Int>()
 
         for (target in allTargets) {
