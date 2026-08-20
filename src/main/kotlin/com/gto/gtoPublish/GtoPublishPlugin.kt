@@ -54,17 +54,37 @@ class GtoPublishPlugin : Plugin<Project> {
                 ext.mavenRepoUrl.set(GtoPublishExtension.resolveRepoUrl(ext.mavenRepoUrl.get()))
             }
 
+            // 模组发布需同时填写 minecraftVersion 和 modLoader；
+            // 两者都留空则为普通 Java 库（非 MC）发布模式。
+            val mcVersion = ext.minecraftVersion.get().trim()
+            val modLoaderRaw = ext.modLoader.get().trim()
+            val isMcMod = mcVersion.isNotBlank() || modLoaderRaw.isNotBlank()
+            if (isMcMod && (mcVersion.isBlank() || modLoaderRaw.isBlank())) {
+                throw org.gradle.api.GradleException(
+                    "minecraftVersion 与 modLoader 必须同时填写 / minecraftVersion and modLoader must be set together\n" +
+                        "  - 发布 Minecraft 模组: 两者都要填，如 minecraftVersion = '26.1', modLoader = 'NeoForge'\n" +
+                        "  - 发布普通 Java 库: 两者都留空（非 MC 模式）\n" +
+                        "详情请参阅 / See: ${VersionChecker.DOCS_URL}"
+                )
+            }
+            val modLoader = modLoaderRaw.lowercase()
+
             // 将 modLoader(小写) 和 mcVersion 编入 archivesName
             // 例如 registrylib + NeoForge + 26.1 → registrylib-neoforge-26.1
-            val mcVersion = ext.minecraftVersion.get()
-            val modLoader = ext.modLoader.get().lowercase()
-
-            // 通过 Mojang 官方 API 验证 MC 版本号
-            VersionChecker.validateMinecraftVersion(mcVersion, project.logger)
-
+            // 普通库保留原始 archivesName
             val baseExt = project.extensions.getByType(BasePluginExtension::class.java)
             val originalArchivesName = baseExt.archivesName.get()
-            val mavenArtifactId = "${originalArchivesName}-${modLoader}-${mcVersion}"
+            val mavenArtifactId = if (isMcMod) {
+                // 通过 Mojang 官方 API 验证 MC 版本号
+                VersionChecker.validateMinecraftVersion(mcVersion, project.logger)
+                "${originalArchivesName}-${modLoader}-${mcVersion}"
+            } else {
+                project.logger.lifecycle(
+                    "非 MC 库模式: archivesName 保持 $originalArchivesName（不追加 modLoader/MC 版本）" +
+                        " / Non-MC library mode: archivesName kept as-is"
+                )
+                originalArchivesName
+            }
             baseExt.archivesName.set(mavenArtifactId)
             project.logger.lifecycle("archivesName: $originalArchivesName → $mavenArtifactId")
 
@@ -177,48 +197,59 @@ class GtoPublishPlugin : Plugin<Project> {
                     task.archivesName.set(project.provider { mavenArtifactId })
                     task.libsDir = project.layout.buildDirectory.dir("libs").get().asFile
                     task.skipMavenConsistencyCheck.set(enableMaven)
+                    task.mcMod.set(isMcMod)
                     task.mustRunAfter("gtoValidate", "assemble")
                     if (enableMaven) task.mustRunAfter("gtoPublishMaven")
                 }
             }
 
             // --- CurseForge: 发布任务（Maven 一致性校验 + 上传） ---
+            // CurseForge 仅支持 Minecraft 模组；非 MC 库（未配置 minecraftVersion/modLoader）时跳过注册
             if (enableCurseforge) {
-                project.tasks.register("gtoPublishCurseforge", GtoPublishCurseforgeTask::class.java) { task ->
-                    task.projectVersion.set(project.provider { project.version.toString() })
-                    task.curseforgeToken.set(project.provider {
-                        project.findProperty("gtoCurseforgeToken")?.toString()
-                    })
-                    task.curseforgeProjectId.set(ext.curseforgeProjectId)
-                    task.minecraftVersion.set(ext.minecraftVersion)
-                    task.modLoader.set(ext.modLoader)
-                    task.javaVersion.set(ext.curseforgeJavaVersion)
-                    task.environment.set(ext.curseforgeEnvironment)
-                    task.archivesName.set(project.provider { mavenArtifactId })
-                    task.mavenRepoUrl.set(ext.mavenRepoUrl)
-                    task.projectGroup.set(project.provider { project.group.toString() })
-                    task.libsDir = project.layout.buildDirectory.dir("libs").get().asFile
-                    task.skipMavenConsistencyCheck.set(enableMaven)
-                    task.mustRunAfter("gtoValidate", "assemble")
-                    if (enableMaven) task.mustRunAfter("gtoPublishMaven")
-                    if (enableGithub) task.mustRunAfter("gtoPublishGithub")
+                if (!isMcMod) {
+                    project.logger.warn(
+                        "未配置 minecraftVersion / modLoader，跳过 CurseForge 发布。 / " +
+                            "Skipping CurseForge publish (minecraftVersion/modLoader not configured).\n" +
+                            "CurseForge 仅支持 Minecraft 模组，普通 Java 库请发布到 Maven 或 GitHub。"
+                    )
+                } else {
+                    project.tasks.register("gtoPublishCurseforge", GtoPublishCurseforgeTask::class.java) { task ->
+                        task.projectVersion.set(project.provider { project.version.toString() })
+                        task.curseforgeToken.set(project.provider {
+                            project.findProperty("gtoCurseforgeToken")?.toString()
+                        })
+                        task.curseforgeProjectId.set(ext.curseforgeProjectId)
+                        task.minecraftVersion.set(ext.minecraftVersion)
+                        task.modLoader.set(ext.modLoader)
+                        task.javaVersion.set(ext.curseforgeJavaVersion)
+                        task.environment.set(ext.curseforgeEnvironment)
+                        task.archivesName.set(project.provider { mavenArtifactId })
+                        task.mavenRepoUrl.set(ext.mavenRepoUrl)
+                        task.projectGroup.set(project.provider { project.group.toString() })
+                        task.libsDir = project.layout.buildDirectory.dir("libs").get().asFile
+                        task.skipMavenConsistencyCheck.set(enableMaven)
+                        task.mustRunAfter("gtoValidate", "assemble")
+                        if (enableMaven) task.mustRunAfter("gtoPublishMaven")
+                        if (enableGithub) task.mustRunAfter("gtoPublishGithub")
+                    }
                 }
             }
 
             // --- gtoPublish: 总入口 ---
+            val curseforgeTaskRegistered = enableCurseforge && isMcMod
             project.tasks.register("gtoPublish") { task ->
                 task.group = "gto publishing"
                 task.description = "Full publish: validate → build → all enabled targets"
                 task.dependsOn("gtoValidate", "assemble")
                 if (enableMaven) task.dependsOn("gtoPublishMaven")
                 if (enableGithub) task.dependsOn("gtoPublishGithub")
-                if (enableCurseforge) task.dependsOn("gtoPublishCurseforge")
+                if (curseforgeTaskRegistered) task.dependsOn("gtoPublishCurseforge")
 
                 task.doFirst {
                     val targets = mutableListOf<String>()
                     if (enableMaven) targets += "Maven"
                     if (enableGithub) targets += "GitHub Release"
-                    if (enableCurseforge) targets += "CurseForge"
+                    if (curseforgeTaskRegistered) targets += "CurseForge"
                     project.logger.lifecycle("发布目标: ${targets.joinToString(", ")}")
                 }
             }

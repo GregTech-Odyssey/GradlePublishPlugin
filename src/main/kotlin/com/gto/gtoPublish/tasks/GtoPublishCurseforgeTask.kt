@@ -9,13 +9,17 @@ import org.gradle.api.GradleException
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputDirectory
+import org.gradle.api.tasks.PathSensitive
+import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
+import org.gradle.work.DisableCachingByDefault
 import java.io.File
 import java.io.OutputStreamWriter
 import java.io.PrintWriter
 import java.net.HttpURLConnection
 import java.net.URI
 
+@DisableCachingByDefault(because = "Uploads a file to CurseForge")
 abstract class GtoPublishCurseforgeTask : DefaultTask() {
 
     @get:Input
@@ -52,6 +56,7 @@ abstract class GtoPublishCurseforgeTask : DefaultTask() {
     abstract val skipMavenConsistencyCheck: Property<Boolean>
 
     @get:InputDirectory
+    @get:PathSensitive(PathSensitivity.NAME_ONLY)
     lateinit var libsDir: File
 
     init {

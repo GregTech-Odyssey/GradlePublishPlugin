@@ -36,6 +36,7 @@ class GtoPublishGithubTaskTest {
             projectGroup.set("com.gto")
             archivesName.set("registrylib-neoforge-26.1.2")
             skipMavenConsistencyCheck.set(true)
+            mcMod.set(true)
             this.libsDir = libsDir
         }
 
@@ -55,6 +56,42 @@ class GtoPublishGithubTaskTest {
         assertTrue(createdRelease.body.contains("\"tag_name\":\"neoforge-26.1.2-4.2.0\""))
         assertTrue(createdRelease.body.contains("\"name\":\"neoforge-26.1.2-4.2.0\""))
         assertTrue(createdRelease.body.contains("\"body\":\"Release neoforge-26.1.2-4.2.0 (release)\""))
+    }
+
+    @Test
+    fun `non-mc library uses plain version as release tag`() {
+        val project = ProjectBuilder.builder().build()
+        val libsDir = project.layout.buildDirectory.dir("libs").get().asFile
+        libsDir.mkdirs()
+        libsDir.resolve("mylib-1.0.0.jar").writeText("jar")
+
+        val task = project.tasks.register("publishGithub", GtoPublishGithubTask::class.java).get().apply {
+            projectVersion.set("1.0.0")
+            githubToken.set("ghp_test")
+            githubRepo.set("owner/repo")
+            mavenRepoUrl.set("https://maven.example/releases")
+            projectGroup.set("com.example")
+            archivesName.set("mylib")
+            skipMavenConsistencyCheck.set(true)
+            mcMod.set(false)
+            this.libsDir = libsDir
+        }
+
+        task.publish()
+
+        val checkedRelease = FakeHttps.connections.single {
+            it.url.host == "api.github.com" && it.url.path.contains("/releases/tags/")
+        }
+        assertEquals(
+            "https://api.github.com/repos/owner/repo/releases/tags/1.0.0",
+            checkedRelease.url.toString()
+        )
+
+        val createdRelease = FakeHttps.connections.single {
+            it.url.host == "api.github.com" && it.url.path == "/repos/owner/repo/releases"
+        }
+        assertTrue(createdRelease.body.contains("\"tag_name\":\"1.0.0\""))
+        assertTrue(createdRelease.body.contains("\"body\":\"Release 1.0.0 (release)\""))
     }
 }
 

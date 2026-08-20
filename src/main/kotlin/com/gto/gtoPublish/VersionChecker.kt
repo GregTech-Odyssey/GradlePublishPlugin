@@ -67,6 +67,37 @@ object VersionChecker {
     }
 
     /**
+     * 比较两个语义化版本号（含可选 suffix）。
+     * 返回正数表示 a > b，负数表示 a < b，0 表示相等。
+     * suffix 比较遵循 alpha < beta < release。
+     */
+    fun compareVersions(a: String, b: String): Int {
+        fun parse(v: String): Pair<List<Int>, String> {
+            val match = VERSION_REGEX.matchEntire(v)
+            val nums = (match?.groupValues?.get(1) ?: v)
+                .split(".")
+                .map { it.toIntOrNull() ?: 0 }
+            val suffix = match?.groupValues?.get(2).orEmpty()
+            return nums to suffix
+        }
+
+        val (aNums, aSuffix) = parse(a)
+        val (bNums, bSuffix) = parse(b)
+
+        val maxLen = maxOf(aNums.size, bNums.size)
+        for (i in 0 until maxLen) {
+            val an = aNums.getOrElse(i) { 0 }
+            val bn = bNums.getOrElse(i) { 0 }
+            if (an != bn) return an - bn
+        }
+
+        if (aSuffix == bSuffix) return 0
+        if (aSuffix.isEmpty()) return 1 // 正式版 > 任何带后缀版本
+        if (bSuffix.isEmpty()) return -1
+        return aSuffix.compareTo(bSuffix)
+    }
+
+    /**
      * 通过 Mojang 官方 API 验证 MC 版本号是否有效。
      */
     fun validateMinecraftVersion(mcVersion: String, logger: Logger) {
@@ -287,7 +318,8 @@ object VersionChecker {
 
     /**
      * 从 Maven 仓库的 maven-metadata.xml 获取插件最新版本号，
-     * 与当前版本比较，若不是最新则抛出异常，阻止所有插件功能。
+     * 与当前版本比较，仅当当前版本低于最新版本时抛出异常，阻止所有插件功能。
+     * 当前版本等于或高于最新版本（包括本地带 -suffix 的预发布版本）则放行。
      */
     fun checkPluginUpdate(
         repoUrl: String,
@@ -310,7 +342,8 @@ object VersionChecker {
                 val latestVersion = Regex("""<release>([^<]+)</release>""").find(xml)?.groupValues?.get(1)
                     ?: Regex("""<latest>([^<]+)</latest>""").find(xml)?.groupValues?.get(1)
                     ?: return
-                if (latestVersion != currentVersion) {
+                // 当前版本 >= 最新版本：本地领先或相等，视为正常，不拦截
+                if (compareVersions(currentVersion, latestVersion) < 0) {
                     throw GradleException(
                         "\n" +
                                 "╔══════════════════════════════════════════════════════════════╗\n" +

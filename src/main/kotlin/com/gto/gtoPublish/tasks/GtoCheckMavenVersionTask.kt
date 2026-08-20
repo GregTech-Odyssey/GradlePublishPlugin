@@ -5,7 +5,9 @@ import org.gradle.api.DefaultTask
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.TaskAction
+import org.gradle.work.DisableCachingByDefault
 
+@DisableCachingByDefault(because = "Makes a network request to check version availability")
 abstract class GtoCheckMavenVersionTask : DefaultTask() {
 
     @get:Input

@@ -7,12 +7,16 @@ import org.gradle.api.GradleException
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputDirectory
+import org.gradle.api.tasks.PathSensitive
+import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
+import org.gradle.work.DisableCachingByDefault
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URI
 import java.net.URLEncoder
 
+@DisableCachingByDefault(because = "Creates a GitHub Release and uploads artifacts")
 abstract class GtoPublishGithubTask : DefaultTask() {
 
     @get:Input
@@ -36,7 +40,12 @@ abstract class GtoPublishGithubTask : DefaultTask() {
     @get:Input
     abstract val skipMavenConsistencyCheck: Property<Boolean>
 
+    /** 是否 Minecraft 模组发布（true 时 tag 使用 loader-mc-version；false 时直接使用版本号） */
+    @get:Input
+    abstract val mcMod: Property<Boolean>
+
     @get:InputDirectory
+    @get:PathSensitive(PathSensitivity.NAME_ONLY)
     lateinit var libsDir: File
 
     init {
@@ -49,7 +58,11 @@ abstract class GtoPublishGithubTask : DefaultTask() {
         val ver = projectVersion.get()
         val ghToken = githubToken.get()
         val ghRepo = githubRepo.get()
-        val releaseVer = VersionChecker.githubReleaseVersion(archivesName.get(), ver)
+        val releaseVer = if (mcMod.getOrElse(false)) {
+            VersionChecker.githubReleaseVersion(archivesName.get(), ver)
+        } else {
+            VersionChecker.displayVersion(ver)
+        }
 
         // 发布前强制检查版本是否已存在
         VersionChecker.checkGithubReleaseNotExists(ghRepo, ghToken, releaseVer, logger)

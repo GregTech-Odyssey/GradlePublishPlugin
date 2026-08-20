@@ -8,7 +8,9 @@ import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.TaskAction
+import org.gradle.work.DisableCachingByDefault
 
+@DisableCachingByDefault(because = "Makes network requests to validate versions before publishing")
 abstract class GtoValidateTask : DefaultTask() {
 
     @get:Input
@@ -114,42 +116,47 @@ abstract class GtoValidateTask : DefaultTask() {
         }
 
         // --- CurseForge credentials ---
+        // 非 MC 库模式：CurseForge 任务不会注册（发布时会被跳过），无需校验任何 CF 配置
         if (enableCurseforge.get()) {
-            if (!curseforgeToken.isPresent || curseforgeToken.get().isBlank()) {
-                errors += """Missing: gtoCurseforgeToken
+            val isMcMod = (minecraftVersion.isPresent && minecraftVersion.get().isNotBlank()) ||
+                (curseforgeModLoader.isPresent && curseforgeModLoader.get().isNotBlank())
+            if (isMcMod) {
+                if (!curseforgeToken.isPresent || curseforgeToken.get().isBlank()) {
+                    errors += """Missing: gtoCurseforgeToken
       ┌─ 设置方式: 在 ~/.gradle/gradle.properties 中添加:
       │    gtoCurseforgeToken=你的API密钥
       └─ 获取方式: https://www.curseforge.com/account/api-tokens"""
-            }
-            if (!curseforgeProjectId.isPresent || curseforgeProjectId.get().isBlank()) {
-                errors += """Missing: curseforgeProjectId
+                }
+                if (!curseforgeProjectId.isPresent || curseforgeProjectId.get().isBlank()) {
+                    errors += """Missing: curseforgeProjectId
       ┌─ 设置方式: 在 gtoPublish {} 扩展块中添加:
       │    curseforgeProjectId = '123456'
       └─ 获取方式: CurseForge 项目页面 → About This Project → Project ID"""
-            }
-            if (!curseforgeModLoader.isPresent || curseforgeModLoader.get().isBlank()) {
-                errors += """Missing: modLoader
+                }
+                if (!curseforgeModLoader.isPresent || curseforgeModLoader.get().isBlank()) {
+                    errors += """Missing: modLoader
       ┌─ 设置方式: 在 gtoPublish {} 扩展块中添加:
       │    modLoader = 'NeoForge'
       └─ 可选值: NeoForge, Forge, Fabric, Quilt 等"""
-            }
-            if (!curseforgeJavaVersion.isPresent || curseforgeJavaVersion.get().isBlank()) {
-                errors += """Missing: curseforgeJavaVersion
+                }
+                if (!curseforgeJavaVersion.isPresent || curseforgeJavaVersion.get().isBlank()) {
+                    errors += """Missing: curseforgeJavaVersion
       ┌─ 设置方式: 在 gtoPublish {} 扩展块中添加:
       │    curseforgeJavaVersion = 'Java 25'
       └─ 可选值: Java 8, Java 17, Java 21, Java 25 等"""
-            }
-            val envValue = if (curseforgeEnvironment.isPresent) curseforgeEnvironment.get() else ""
-            if (envValue.isBlank()) {
-                errors += """Missing: curseforgeEnvironment
+                }
+                val envValue = if (curseforgeEnvironment.isPresent) curseforgeEnvironment.get() else ""
+                if (envValue.isBlank()) {
+                    errors += """Missing: curseforgeEnvironment
       ┌─ 设置方式: 在 gtoPublish {} 扩展块中添加:
       │    curseforgeEnvironment = 'both'
       └─ 可选值: both（双端）, client（仅客户端）, server（仅服务端）"""
-            } else {
-                try {
-                    GtoPublishExtension.resolveEnvironmentVersions(envValue)
-                } catch (e: GradleException) {
-                    errors += e.message ?: "Invalid curseforgeEnvironment: $envValue"
+                } else {
+                    try {
+                        GtoPublishExtension.resolveEnvironmentVersions(envValue)
+                    } catch (e: GradleException) {
+                        errors += e.message ?: "Invalid curseforgeEnvironment: $envValue"
+                    }
                 }
             }
         }

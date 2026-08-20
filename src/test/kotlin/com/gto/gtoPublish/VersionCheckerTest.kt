@@ -61,4 +61,13 @@ class VersionCheckerTest {
         assertEquals("beta", VersionChecker.parseReleaseType("1.2.3-beta"))
         assertEquals("release", VersionChecker.parseReleaseType("1.2.3-release"))
     }
+
+    @Test
+    fun `compares plugin versions with suffixes`() {
+        // 本地带后缀的预发布版本应视为"领先"，不落后于同号正式版
+        assertTrue(VersionChecker.compareVersions("1.0.25", "1.0.24") > 0)
+        assertTrue(VersionChecker.compareVersions("1.0.25-dev", "1.0.24") > 0)
+        assertTrue(VersionChecker.compareVersions("1.0.24", "1.0.24") == 0)
+        assertTrue(VersionChecker.compareVersions("1.0.23", "1.0.24") < 0)
+    }
 }

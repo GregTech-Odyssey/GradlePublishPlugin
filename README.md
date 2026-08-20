@@ -15,6 +15,8 @@
 3. **版本号格式**需符合 `x.x.x[-suffix]`（见下方 [版本格式](#版本格式) 章节）
 
 > **注意**：本插件会自动将 `archivesName` 修改为 `{name}-{modLoader}-{mcVersion}`（modLoader 自动小写）。例如 `archivesName = 'registrylib'` + `modLoader = 'NeoForge'` + `minecraftVersion = '26.1'` → `registrylib-neoforge-26.1`。本地 JAR、Maven、GitHub、CurseForge 所有文件名统一为 `registrylib-neoforge-26.1-x.x.x.jar`。GitHub Release 的 tag/name 使用 `{modLoader}-{mcVersion}-{version}`，例如 `neoforge-26.1-7.0.8`。消费者引用：`implementation("com.gto:registrylib-neoforge-26.1:7.0.8")`。
+>
+> **非 MC 库模式**：如果项目是普通 Java 库（不依赖 Minecraft/加载器），只需**不填** `minecraftVersion` 和 `modLoader`（两者都留空）。此时插件不调用 Mojang API，`archivesName` 保持原始值，Maven 和 GitHub Release 照常发布（GitHub tag 直接使用版本号），CurseForge 会自动跳过（仅支持 MC 模组）。
 
 ## 安装
 
@@ -65,8 +67,8 @@ gtoPublish {
     publishCurseforge = false       // 默认 false
     mavenRepoName     = 'gtodysseyRepository'  // 默认值
     mavenRepoUrl      = 'releases'  // 必填，可选值: 'releases' 或 'private'
-    minecraftVersion      = '26.1'      // 必填，Minecraft 版本号
-    modLoader         = 'NeoForge'  // 必填，模组加载器（NeoForge, Forge, Fabric 等）
+    minecraftVersion      = '26.1'      // 模组必填；普通 Java 库留空
+    modLoader         = 'NeoForge'  // 模组必填（NeoForge, Forge, Fabric 等）；普通 Java 库留空
     githubRepo        = 'owner/repo-name'      // GitHub 仓库（启用 GitHub 发布时必填）
     curseforgeProjectId   = '123456'    // CurseForge 项目 ID（启用 CurseForge 时必填）
     curseforgeJavaVersion = 'Java 25'   // Java 版本（启用 CurseForge 时必填，如 Java 8, Java 17, Java 21, Java 25）
@@ -159,6 +161,52 @@ GitHub Release tag/name：`neoforge-26.1-0.0.2`
 
 消费者引用：`implementation("com.gto:my-mod-neoforge-26.1:0.0.2")`
 
+### 非 MC 库配置示例（普通 Java 库）
+
+不依赖 Minecraft/加载器的库（如通用工具库、API 库）无需填写 `minecraftVersion` 和 `modLoader`。此时插件不校验 Mojang 版本，`archivesName` 保持原始值，Maven / GitHub Release 照常发布：
+
+```groovy
+// build.gradle
+plugins {
+    id 'maven-publish'
+    id 'com.gto.gtopublishgradleplugin' version '1.0.0'
+}
+
+version = '1.2.3'
+group = 'com.example'
+base.archivesName = 'mylib'
+
+publishing {
+    repositories {
+        maven {
+            name = 'gtodysseyRepository'
+            url = 'https://maven.gtodyssey.com/releases'
+            credentials {
+                username = findProperty('gtodysseyRepositoryUsername')
+                password = findProperty('gtodysseyRepositoryPassword')
+            }
+        }
+    }
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+        }
+    }
+}
+
+gtoPublish {
+    publishMaven      = true
+    publishGithub     = true
+    mavenRepoUrl      = 'releases'
+    githubRepo        = 'GregTech-Odyssey/mylib'
+    // 不设置 minecraftVersion / modLoader → 非 MC 库模式
+}
+```
+
+发布后文件名保持 `mylib-1.2.3.jar`，Maven 坐标为 `com.example:mylib:1.2.3`，GitHub Release tag/name 直接使用 `1.2.3`。
+
+> **注意**：`minecraftVersion` 和 `modLoader` 必须同时填写或同时留空；只填其中一个会报错。CurseForge 仅支持 Minecraft 模组，非 MC 库模式下会跳过 CurseForge 发布（日志中提示）。
+
 ### 方式二：通过 `gradle.properties` 覆盖
 
 所有扩展属性都可通过项目级或全局 `gradle.properties` 覆盖：
@@ -237,8 +285,8 @@ GitHub Token 也支持环境变量 `GH_TOKEN` 或 `GITHUB_TOKEN`。
 | `gtoValidate` | 校验凭证配置和版本号是否冲突 |
 | `gtoCheckMavenVersion` | 检查版本在 Maven 仓库中是否已存在 |
 | `gtoPublishMaven` | 通过 `maven-publish` 发布到 Maven 仓库（archivesName 自动包含 modLoader 和 MC 版本） |
-| `gtoPublishGithub` | 创建 GitHub Release 并上传 JAR（包含 Maven 一致性校验） |
-| `gtoPublishCurseforge` | 上传 JAR 到 CurseForge（包含 Maven 一致性校验） |
+| `gtoPublishGithub` | 创建 GitHub Release 并上传 JAR（包含 Maven 一致性校验；非 MC 库模式 tag 直接使用版本号） |
+| `gtoPublishCurseforge` | 上传 JAR 到 CurseForge（包含 Maven 一致性校验；仅 MC 模组，非 MC 库模式下跳过） |
 | `gtoPublish` | 总入口：validate → build → 所有启用目标 |
 
 ## 发布此插件
