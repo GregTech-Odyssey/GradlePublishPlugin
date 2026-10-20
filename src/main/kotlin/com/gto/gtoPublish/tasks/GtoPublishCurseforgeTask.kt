@@ -6,6 +6,7 @@ import com.gto.gtoPublish.GtoPublishExtension
 import com.gto.gtoPublish.VersionChecker
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
+import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputDirectory
@@ -42,6 +43,9 @@ abstract class GtoPublishCurseforgeTask : DefaultTask() {
 
     @get:Input
     abstract val environment: Property<String>
+
+    @get:Input
+    abstract val relations: ListProperty<Map<String, String>>
 
     @get:Input
     abstract val archivesName: Property<String>
@@ -148,13 +152,7 @@ abstract class GtoPublishCurseforgeTask : DefaultTask() {
         val boundary = "----GtoPublish${System.nanoTime()}"
         val releaseType = VersionChecker.parseReleaseType(ver)
         val metadata = Gson().toJson(
-            mapOf(
-                "changelog" to "Release $ver",
-                "changelogType" to "markdown",
-                "displayName" to mainJar.name,
-                "gameVersions" to versionIds,
-                "releaseType" to releaseType
-            )
+            buildMetadata(ver, mainJar.name, versionIds, releaseType, relations.getOrElse(emptyList()))
         )
 
         val uploadUrl = "https://minecraft.curseforge.com/api/projects/${cfProjectId}/upload-file"
@@ -190,5 +188,27 @@ abstract class GtoPublishCurseforgeTask : DefaultTask() {
         }
         logger.lifecycle("\u2713 已上传至 CurseForge: ${mainJar.name}")
         conn.disconnect()
+    }
+
+    companion object {
+        fun buildMetadata(
+            version: String,
+            displayName: String,
+            gameVersions: List<Int>,
+            releaseType: String,
+            relations: List<Map<String, String>>
+        ): Map<String, Any> {
+            val metadata = linkedMapOf<String, Any>(
+                "changelog" to "Release $version",
+                "changelogType" to "markdown",
+                "displayName" to displayName,
+                "gameVersions" to gameVersions,
+                "releaseType" to releaseType
+            )
+            if (relations.isNotEmpty()) {
+                metadata["relations"] = mapOf("projects" to relations)
+            }
+            return metadata
+        }
     }
 }

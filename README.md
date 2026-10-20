@@ -33,7 +33,7 @@ pluginManagement {
 
 // build.gradle
 plugins {
-    id 'com.gto.gtopublishgradleplugin' version '1.0.24'
+    id 'com.gto.gtopublishgradleplugin' version '1.0.26'
 }
 ```
 
@@ -73,6 +73,7 @@ gtoPublish {
     curseforgeProjectId   = '123456'    // CurseForge 项目 ID（启用 CurseForge 时必填）
     curseforgeJavaVersion = 'Java 25'   // Java 版本（启用 CurseForge 时必填，如 Java 8, Java 17, Java 21, Java 25）
     curseforgeEnvironment = 'both'      // Environment 组（默认 both）：both / client / server
+    curseforgeRelations   = [gtoutils: 'required']  // CurseForge 依赖关系（默认无）：项目 slug → 关系类型
 }
 ```
 
@@ -85,6 +86,24 @@ gtoPublish {
 | `server` | Server | 仅服务端模组 |
 
 别名：`client-only`、`server-only`、`client-server`、`all`（等同 `both`）。
+
+`curseforgeRelations` 对应 CurseForge 文件页的 **Relations**（依赖关系），上传时随文件一起声明，不用再去网页上手动补。键是项目 slug（项目网址最后一段，如 `https://www.curseforge.com/minecraft/mc-mods/gtoutils` → `gtoutils`），值是关系类型：
+
+| 配置值 | CurseForge 关系 | 含义 |
+|---|---|---|
+| `required` | Required Dependency | 必需前置，CurseForge 启动器会自动一起安装 |
+| `optional` | Optional Dependency | 可选联动 |
+| `embedded` | Embedded Library | 已内嵌在 jar 里 |
+| `incompatible` | Incompatible | 不兼容 |
+| `tool` | Tool | 配套工具 |
+
+也接受 API 原名（`requiredDependency`、`optionalDependency`、`embeddedLibrary`）。类型或 slug 写错会在配置阶段直接报错。
+
+```groovy
+gtoPublish {
+    curseforgeRelations = [gtoutils: 'required', gtorender: 'required']
+}
+```
 
 `mavenRepoUrl` 支持以下简写值：
 
@@ -224,6 +243,7 @@ gtoPublish {
 | `modLoader` | `gtoModLoader` |
 | `curseforgeJavaVersion` | `gtoCurseforgeJavaVersion` |
 | `curseforgeEnvironment` | `gtoCurseforgeEnvironment` |
+| `curseforgeRelations` | `gtoCurseforgeRelations`（格式 `gtoutils:required,gtorender:optional`） |
 
 ## 凭证配置
 

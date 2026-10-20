@@ -213,7 +213,12 @@ class GtoPublishPlugin : Plugin<Project> {
                             "CurseForge 仅支持 Minecraft 模组，普通 Java 库请发布到 Maven 或 GitHub。"
                     )
                 } else {
+                    val relations = GtoPublishExtension.resolveRelations(ext.curseforgeRelations.get())
+                    relations.forEach {
+                        project.logger.lifecycle("  CurseForge relation: ${it["slug"]} → ${it["type"]}")
+                    }
                     project.tasks.register("gtoPublishCurseforge", GtoPublishCurseforgeTask::class.java) { task ->
+                        task.relations.set(relations)
                         task.projectVersion.set(project.provider { project.version.toString() })
                         task.curseforgeToken.set(project.provider {
                             project.findProperty("gtoCurseforgeToken")?.toString()
@@ -292,6 +297,9 @@ class GtoPublishPlugin : Plugin<Project> {
         }
         project.findProperty("gtoCurseforgeEnvironment")?.let {
             ext.curseforgeEnvironment.set(it.toString())
+        }
+        project.findProperty("gtoCurseforgeRelations")?.let {
+            ext.curseforgeRelations.set(GtoPublishExtension.parseRelations(it.toString()))
         }
     }
 

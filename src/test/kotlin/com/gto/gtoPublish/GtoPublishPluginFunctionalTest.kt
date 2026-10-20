@@ -21,7 +21,8 @@ class GtoPublishPluginFunctionalTest {
         publishMaven: Boolean = false,
         publishCurseforge: Boolean = false,
         minecraftVersion: String = "",
-        modLoader: String = ""
+        modLoader: String = "",
+        relations: String = ""
     ) {
         File(projectDir, "settings.gradle").writeText("rootProject.name = 'test-lib'")
         File(projectDir, "build.gradle").writeText(
@@ -41,6 +42,7 @@ class GtoPublishPluginFunctionalTest {
                 mavenRepoUrl      = 'releases'
                 minecraftVersion  = '$minecraftVersion'
                 modLoader         = '$modLoader'
+                $relations
             }
             """.trimIndent()
         )
@@ -92,5 +94,42 @@ class GtoPublishPluginFunctionalTest {
             .buildAndFail()
 
         assertTrue(result.output.contains("minecraftVersion 与 modLoader 必须同时填写"))
+    }
+
+    @Test
+    fun `curseforge relations are resolved from dsl`() {
+        writeProject(
+            publishCurseforge = true,
+            minecraftVersion = "1.20.1",
+            modLoader = "Forge",
+            relations = "curseforgeRelations = [gtoutils: 'required', gtorender: 'optional']"
+        )
+
+        val result = GradleRunner.create()
+            .withProjectDir(projectDir)
+            .withPluginClasspath()
+            .withArguments("help", "--console=plain")
+            .build()
+
+        assertTrue(result.output.contains("CurseForge relation: gtoutils → requiredDependency"))
+        assertTrue(result.output.contains("CurseForge relation: gtorender → optionalDependency"))
+    }
+
+    @Test
+    fun `invalid curseforge relation type fails configuration`() {
+        writeProject(
+            publishCurseforge = true,
+            minecraftVersion = "1.20.1",
+            modLoader = "Forge",
+            relations = "curseforgeRelations = [gtoutils: 'needed']"
+        )
+
+        val result = GradleRunner.create()
+            .withProjectDir(projectDir)
+            .withPluginClasspath()
+            .withArguments("help", "--console=plain")
+            .buildAndFail()
+
+        assertTrue(result.output.contains("curseforgeRelations"))
     }
 }

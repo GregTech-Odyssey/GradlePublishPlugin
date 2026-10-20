@@ -1,6 +1,7 @@
 package com.gto.gtoPublish
 
 import org.gradle.api.GradleException
+import org.gradle.api.provider.MapProperty
 import org.gradle.api.provider.Property
 
 abstract class GtoPublishExtension {
@@ -50,6 +51,8 @@ abstract class GtoPublishExtension {
      */
     abstract val curseforgeEnvironment: Property<String>
 
+    abstract val curseforgeRelations: MapProperty<String, String>
+
     init {
         publishMaven.convention(true)
         publishGithub.convention(false)
@@ -61,12 +64,24 @@ abstract class GtoPublishExtension {
         modLoader.convention("")
         curseforgeJavaVersion.convention("")
         curseforgeEnvironment.convention("both")
+        curseforgeRelations.convention(emptyMap())
     }
 
     companion object {
         private val REPO_URL_MAP = mapOf(
             "releases" to "https://maven.gtodyssey.com/releases",
             "private" to "https://maven.gtodyssey.com/private"
+        )
+
+        private val RELATION_TYPE_MAP = mapOf(
+            "required" to "requiredDependency",
+            "requireddependency" to "requiredDependency",
+            "optional" to "optionalDependency",
+            "optionaldependency" to "optionalDependency",
+            "embedded" to "embeddedLibrary",
+            "embeddedlibrary" to "embeddedLibrary",
+            "incompatible" to "incompatible",
+            "tool" to "tool"
         )
 
         /** CurseForge API 中 Environment 组的标准名称 */
@@ -102,6 +117,45 @@ abstract class GtoPublishExtension {
                         "  server → 仅 Server"
                 )
             }
+        }
+
+        fun resolveRelationType(input: String): String {
+            return RELATION_TYPE_MAP[input.trim().lowercase().replace("-", "").replace("_", "")]
+                ?: throw GradleException(
+                    "curseforgeRelations 类型 '$input' 无效 / Invalid curseforgeRelations type\n" +
+                        "可选值 / Valid options: required, optional, embedded, incompatible, tool"
+                )
+        }
+
+        fun resolveRelations(input: Map<String, String>): List<Map<String, String>> {
+            return input.entries
+                .map { (slug, type) ->
+                    val trimmed = slug.trim()
+                    if (trimmed.isEmpty() || !trimmed.matches(Regex("[a-z0-9-]+"))) {
+                        throw GradleException(
+                            "curseforgeRelations 项目 slug '$slug' 无效 / Invalid CurseForge project slug\n" +
+                                "slug 是项目网址最后一段，如 https://www.curseforge.com/minecraft/mc-mods/gtoutils → gtoutils"
+                        )
+                    }
+                    mapOf("slug" to trimmed, "type" to resolveRelationType(type))
+                }
+                .sortedBy { it["slug"] }
+        }
+
+        fun parseRelations(input: String): Map<String, String> {
+            return input.split(',', ';')
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+                .associate { entry ->
+                    val parts = entry.split(':', '=')
+                    if (parts.size != 2) {
+                        throw GradleException(
+                            "gtoCurseforgeRelations 格式错误 '$entry' / Invalid gtoCurseforgeRelations entry\n" +
+                                "格式 / Format: slug:type[,slug:type]，如 gtoutils:required,gtorender:optional"
+                        )
+                    }
+                    parts[0].trim() to parts[1].trim()
+                }
         }
     }
 }
