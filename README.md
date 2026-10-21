@@ -294,6 +294,8 @@ GitHub Token 也支持环境变量 `GH_TOKEN` 或 `GITHUB_TOKEN`。
 ./gradlew gtoPublishCurseforge
 ```
 
+> **CurseForge 上传结果**：`gtoPublishCurseforge` 上传成功后，把 CurseForge 返回的文件 ID 连同项目 ID、版本号、文件名、文件大小和 SHA-1 写进 `build/gtoPublish/curseforge.json`，并在日志里打印文件 ID。新文件在审核通过前查不到，整合包等下游要引用这个文件时以它为准。
+
 > **推荐发布顺序**：Maven → GitHub → CurseForge。GitHub 和 CurseForge 发布前会自动校验本地 JAR 与 Maven 仓库中产物的 SHA-1 一致性，因此 Maven 必须先完成发布。
 >
 > **一键发布说明**：使用 `gtoPublish` 且同时启用了 Maven 时，GitHub 和 CurseForge 任务会自动跳过 Maven SHA-1 一致性校验，因为 Maven 制品已在同一次构建中发布，而部分构建工具（如 NeoForge）会产生非确定性 JAR，重新构建后 SHA-1 会不同。单独执行 `gtoPublishGithub` 或 `gtoPublishCurseforge` 时仍会进行校验。

@@ -232,6 +232,7 @@ class GtoPublishPlugin : Plugin<Project> {
                         task.mavenRepoUrl.set(ext.mavenRepoUrl)
                         task.projectGroup.set(project.provider { project.group.toString() })
                         task.libsDir = project.layout.buildDirectory.dir("libs").get().asFile
+                        task.resultFile.set(project.layout.buildDirectory.file("gtoPublish/curseforge.json"))
                         task.skipMavenConsistencyCheck.set(enableMaven)
                         task.mustRunAfter("gtoValidate", "assemble")
                         if (enableMaven) task.mustRunAfter("gtoPublishMaven")

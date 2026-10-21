@@ -6,10 +6,12 @@ import com.gto.gtoPublish.GtoPublishExtension
 import com.gto.gtoPublish.VersionChecker
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
+import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputDirectory
+import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
@@ -19,6 +21,7 @@ import java.io.OutputStreamWriter
 import java.io.PrintWriter
 import java.net.HttpURLConnection
 import java.net.URI
+import java.security.MessageDigest
 
 @DisableCachingByDefault(because = "Uploads a file to CurseForge")
 abstract class GtoPublishCurseforgeTask : DefaultTask() {
@@ -62,6 +65,9 @@ abstract class GtoPublishCurseforgeTask : DefaultTask() {
     @get:InputDirectory
     @get:PathSensitive(PathSensitivity.NAME_ONLY)
     lateinit var libsDir: File
+
+    @get:OutputFile
+    abstract val resultFile: RegularFileProperty
 
     init {
         group = "gto publishing"
@@ -187,10 +193,58 @@ abstract class GtoPublishCurseforgeTask : DefaultTask() {
             throw GradleException("CurseForge 上传失败 / CurseForge upload failed (${conn.responseCode}): $error\n详情请参阅 / See: ${VersionChecker.DOCS_URL}")
         }
         logger.lifecycle("\u2713 已上传至 CurseForge: ${mainJar.name}")
+        val responseText = conn.inputStream.bufferedReader().readText()
         conn.disconnect()
+        val fileId = parseFileId(responseText)
+            ?: throw GradleException("无法从 CurseForge 响应中解析文件 ID / Failed to parse file id from CurseForge response: $responseText")
+
+        val result = buildResult(cfProjectId, fileId, ver, mainJar.name, mainJar.length(), sha1Hex(mainJar))
+        val out = resultFile.get().asFile
+        out.parentFile.mkdirs()
+        out.writeText(Gson().toJson(result) + "\n")
+        logger.lifecycle("  CurseForge 文件 ID / file id: $fileId（项目 / project $cfProjectId，待审核 / under review）")
+        logger.lifecycle("  上传结果已写入 / Upload result written to: ${out.path}")
     }
 
     companion object {
+        fun parseFileId(responseText: String): Long? {
+            val parsed: Map<String, Any?> = try {
+                Gson().fromJson(responseText, object : TypeToken<Map<String, Any?>>() {}.type)
+            } catch (e: Exception) {
+                null
+            } ?: return null
+            return (parsed["id"] as? Number)?.toLong()
+        }
+
+        fun buildResult(
+            projectId: String,
+            fileId: Long,
+            version: String,
+            fileName: String,
+            fileLength: Long,
+            sha1: String
+        ): Map<String, Any> = linkedMapOf(
+            "projectId" to projectId.toLong(),
+            "fileId" to fileId,
+            "version" to version,
+            "fileName" to fileName,
+            "fileLength" to fileLength,
+            "sha1" to sha1
+        )
+
+        fun sha1Hex(file: File): String {
+            val digest = MessageDigest.getInstance("SHA-1")
+            file.inputStream().use { input ->
+                val buffer = ByteArray(8192)
+                while (true) {
+                    val read = input.read(buffer)
+                    if (read < 0) break
+                    digest.update(buffer, 0, read)
+                }
+            }
+            return digest.digest().joinToString("") { "%02x".format(it) }
+        }
+
         fun buildMetadata(
             version: String,
             displayName: String,
