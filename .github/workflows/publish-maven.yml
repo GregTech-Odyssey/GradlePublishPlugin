@@ -1,0 +1,20 @@
+name: Publish Maven
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: publish-maven
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    uses: ./.github/workflows/maven-publish.yml
+    with:
+      publish-tasks: publishAllPublicationsToGtodysseyRepositoryRepository
+    secrets: inherit

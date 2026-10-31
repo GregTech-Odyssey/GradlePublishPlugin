@@ -311,6 +311,44 @@ GitHub Token 也支持环境变量 `GH_TOKEN` 或 `GITHUB_TOKEN`。
 | `gtoPublishCurseforge` | 上传 JAR 到 CurseForge（包含 Maven 一致性校验；仅 MC 模组，非 MC 库模式下跳过） |
 | `gtoPublish` | 总入口：validate → build → 所有启用目标 |
 
+## 主分支自动发布 Maven
+
+本仓库的 `.github/workflows/maven-publish.yml` 是组织共用的自动发布流程：默认分支每次推送后检查当前版本是否已在 Maven 上，没有就构建并执行 `gtoPublishMaven`，再逐个下载比对 sha256。不跑 `gtoValidate`：脚本里写了 `publishCurseforge = true` 的仓库会被它要求 CF 令牌，而它的凭据与版本检查流程里已经自己做了。不发 CurseForge，也不发 GitHub Release。
+
+| 推送时的情况 | 结果 |
+|---|---|
+| 版本号在 Maven 上不存在 | 构建、发布、校验 |
+| 版本号已存在，只改了文档或 `.github` | 跳过 |
+| 版本号已存在，但改了会进 jar 的文件 | 不发布，检查标红并列出文件，提醒递增版本号 |
+| 同一次发布里部分坐标存在、部分不存在 | 标红，上次发布中断，需要手动处理 |
+
+接入时在默认分支加 `.github/workflows/publish-maven.yml`（`branches` 写本仓库的默认分支）：
+
+```yaml
+name: Publish Maven
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: publish-maven
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    uses: GregTech-Odyssey/GradlePublishPlugin/.github/workflows/maven-publish.yml@main
+    secrets: inherit
+```
+
+可选输入：`java-version`（默认装 17 与 21，用最后一个跑 Gradle）、`build-tasks`（默认 `assemble`）、`publish-tasks`（默认 `gtoPublishMaven`）、`gradle-args`、`ignored-paths`、`submodules`。
+
+仓库还要建环境 `maven-publish`：部署分支只允许默认分支，环境密钥 `GTODYSSEY_MAVEN_USERNAME`、`GTODYSSEY_MAVEN_PASSWORD`。密钥只放在这个环境里，其他分支上的工作流读不到。
+
 ## 发布此插件
 
 插件自身版本通过 `gradle.properties` 中的 `gto_plugin_version` 配置，同样遵循版本格式规则：

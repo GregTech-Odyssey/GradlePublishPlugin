@@ -1,0 +1,203 @@
+name: Maven Publish
+
+# 各仓库默认分支推送后自动构建并发布到 gtodyssey Maven（不发 CurseForge / GitHub Release）。
+# 调用方写法见本仓库 README「主分支自动发布 Maven」一节。
+on:
+  workflow_call:
+    inputs:
+      java-version:
+        description: '安装的 JDK，换行分隔，最后一个用来跑 Gradle，其余供 toolchain 选用'
+        type: string
+        default: |
+          17
+          21
+      build-tasks:
+        description: '构建产物的 Gradle 任务'
+        type: string
+        default: 'assemble'
+      publish-tasks:
+        description: '发布到 Maven 的 Gradle 任务'
+        type: string
+        default: 'gtoPublishMaven'
+      gradle-args:
+        description: '附加给每次 Gradle 调用的参数'
+        type: string
+        default: ''
+      repository-url:
+        description: 'Maven 仓库地址（用于检查版本是否已存在与发布后校验）'
+        type: string
+        default: 'https://gtodyssey.com/maven/releases'
+      ignored-paths:
+        description: '改动只涉及这些路径时，版本号不变也不算漏发（bash glob，空格分隔）'
+        type: string
+        default: '*.md .github/* docs/* LICENSE* .gitignore .gitattributes .editorconfig'
+      submodules:
+        type: string
+        default: 'false'
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Publish to Maven
+    if: github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    # 凭据只放在这个环境里，环境限定只有默认分支能用，其他分支上的工作流读不到
+    environment: maven-publish
+    timeout-minutes: 60
+    env:
+      REPO_URL: ${{ inputs.repository-url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: ${{ inputs.submodules }}
+          persist-credentials: false
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ inputs.java-version }}
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Gradle arguments
+        env:
+          EXTRA_ARGS: ${{ inputs.gradle-args }}
+        run: |
+          JDKS=$(env | grep -o '^JAVA_HOME_[0-9]*_X64' | sort -u | paste -sd, -)
+          echo "GRADLE_ARGS=--no-daemon --stacktrace -PgtoPublishCurseforge=false -Porg.gradle.java.installations.fromEnv=$JDKS $EXTRA_ARGS" >> "$GITHUB_ENV"
+
+      - name: Read publications
+        id: pubs
+        run: |
+          set -euo pipefail
+          chmod +x ./gradlew
+          INIT="$RUNNER_TEMP/gto-publications.init.gradle"
+          cat > "$INIT" <<'EOF'
+          gradle.projectsEvaluated {
+              gradle.rootProject.allprojects { p ->
+                  def publishing = p.extensions.findByName('publishing')
+                  if (publishing == null) return
+                  if (publishing.repositories.findByName('gtodysseyRepository') == null) return
+                  publishing.publications.withType(MavenPublication).each { pub ->
+                      println "GTO_PUB ${pub.groupId}:${pub.artifactId}:${pub.version}"
+                      pub.artifacts.each { a ->
+                          def suffix = (a.classifier ? "-${a.classifier}" : '') + ".${a.extension}"
+                          println "GTO_ART ${pub.groupId}:${pub.artifactId}:${pub.version} ${suffix} ${a.file}"
+                      }
+                  }
+              }
+          }
+          EOF
+          ./gradlew help -q -I "$INIT" $GRADLE_ARGS | tee "$RUNNER_TEMP/pubs.txt" | grep '^GTO_' || true
+          grep '^GTO_PUB ' "$RUNNER_TEMP/pubs.txt" | cut -d' ' -f2 | sort -u > "$RUNNER_TEMP/coords.txt"
+          grep '^GTO_ART ' "$RUNNER_TEMP/pubs.txt" | cut -d' ' -f2- | sort -u > "$RUNNER_TEMP/artifacts.txt"
+          if [ ! -s "$RUNNER_TEMP/coords.txt" ]; then
+            echo "::error::没有找到发布到 gtodysseyRepository 的 Maven publication"
+            exit 1
+          fi
+          EXISTING=0; MISSING=0
+          while IFS=: read -r G A V; do
+            case "$V" in
+              ''|unspecified|*+*) echo "::error::$G:$A 的版本号 '$V' 不能发布"; exit 1 ;;
+            esac
+            URL="$REPO_URL/${G//.//}/$A/$V/$A-$V.pom"
+            CODE=$(curl -s -o /dev/null -w '%{http_code}' -I --retry 3 "$URL")
+            case "$CODE" in
+              200) echo "已存在 $G:$A:$V"; EXISTING=$((EXISTING+1)) ;;
+              404) echo "未发布 $G:$A:$V"; MISSING=$((MISSING+1)) ;;
+              *) echo "::error::检查 $URL 返回 $CODE"; exit 1 ;;
+            esac
+          done < "$RUNNER_TEMP/coords.txt"
+          if [ "$MISSING" -gt 0 ] && [ "$EXISTING" -gt 0 ]; then
+            echo "::error::同一次发布里部分坐标已存在、部分不存在，可能是上次发布中断，需要手动处理"
+            exit 1
+          fi
+          echo "publish=$([ "$MISSING" -gt 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "version=$(head -n1 "$RUNNER_TEMP/coords.txt" | cut -d: -f3)" >> "$GITHUB_OUTPUT"
+
+      # 版本号已在 Maven 上：本次推送若改了会进 jar 的文件，说明改了代码却没改版本号，标红提醒推送者
+      - name: Check version bump
+        if: steps.pubs.outputs.publish == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+          IGNORED: ${{ inputs.ignored-paths }}
+          VERSION: ${{ steps.pubs.outputs.version }}
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_EVENT_NAME}" != "push" ] || [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            echo "版本 $VERSION 已在 Maven 上，跳过发布"
+            exit 0
+          fi
+          gh api "repos/$GITHUB_REPOSITORY/compare/$BEFORE...$AFTER" --paginate --jq '.files[].filename' | sort -u > "$RUNNER_TEMP/changed.txt"
+          RELEVANT=()
+          set -f
+          while IFS= read -r f; do
+            skip=false
+            for pat in $IGNORED; do
+              # shellcheck disable=SC2053
+              if [[ "$f" == $pat ]]; then skip=true; break; fi
+            done
+            $skip || RELEVANT+=("$f")
+          done < "$RUNNER_TEMP/changed.txt"
+          if [ "${#RELEVANT[@]}" -eq 0 ]; then
+            echo "版本 $VERSION 已在 Maven 上，本次只改了不进 jar 的文件，跳过发布"
+            exit 0
+          fi
+          {
+            echo "### 没有发布到 Maven：版本号 \`$VERSION\` 已经存在"
+            echo
+            echo "这次推送改了下面这些文件，但版本号没有递增，Maven 上仍是旧内容。请递增版本号后再推送。"
+            echo
+            printf -- '- `%s`\n' "${RELEVANT[@]:0:30}"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::error::版本号 $VERSION 已在 Maven 上，但这次推送改了 ${#RELEVANT[@]} 个文件。请递增版本号，否则这些改动不会发布。"
+          exit 1
+
+      - name: Build
+        if: steps.pubs.outputs.publish == 'true'
+        run: ./gradlew ${{ inputs.build-tasks }} $GRADLE_ARGS
+
+      - name: Publish
+        if: steps.pubs.outputs.publish == 'true'
+        env:
+          ORG_GRADLE_PROJECT_gtodysseyRepositoryUsername: ${{ secrets.GTODYSSEY_MAVEN_USERNAME }}
+          ORG_GRADLE_PROJECT_gtodysseyRepositoryPassword: ${{ secrets.GTODYSSEY_MAVEN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "$ORG_GRADLE_PROJECT_gtodysseyRepositoryUsername" ] || [ -z "$ORG_GRADLE_PROJECT_gtodysseyRepositoryPassword" ]; then
+            echo "::error::缺少密钥：仓库环境 maven-publish 里需要 GTODYSSEY_MAVEN_USERNAME / GTODYSSEY_MAVEN_PASSWORD"
+            exit 1
+          fi
+          ./gradlew ${{ inputs.publish-tasks }} $GRADLE_ARGS
+
+      - name: Verify
+        if: steps.pubs.outputs.publish == 'true'
+        run: |
+          set -euo pipefail
+          {
+            echo "### 已发布到 Maven"
+            echo
+            echo "| 坐标 | 文件 | sha256 |"
+            echo "|---|---|---|"
+          } >> "$GITHUB_STEP_SUMMARY"
+          while read -r COORD SUFFIX FILE; do
+            IFS=: read -r G A V <<< "$COORD"
+            if [ ! -f "$FILE" ]; then
+              echo "::warning::本地没有 $FILE，跳过校验"
+              continue
+            fi
+            NAME="$A-$V$SUFFIX"
+            URL="$REPO_URL/${G//.//}/$A/$V/$NAME"
+            LOCAL=$(sha256sum "$FILE" | cut -d' ' -f1)
+            REMOTE=$(curl -sSfL --retry 3 "$URL" | sha256sum | cut -d' ' -f1)
+            if [ "$LOCAL" != "$REMOTE" ]; then
+              echo "::error::Maven 上的 $NAME 与本次构建不一致"
+              exit 1
+            fi
+            echo "OK $NAME $LOCAL"
+            echo "| \`$COORD\` | \`$NAME\` | \`${LOCAL:0:16}…\` |" >> "$GITHUB_STEP_SUMMARY"
+          done < "$RUNNER_TEMP/artifacts.txt"
