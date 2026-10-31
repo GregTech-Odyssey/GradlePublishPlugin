@@ -33,7 +33,7 @@ pluginManagement {
 
 // build.gradle
 plugins {
-    id 'com.gto.gtopublishgradleplugin' version '1.0.28'
+    id 'com.gto.gtopublishgradleplugin' version '1.0.29'
 }
 ```
 
@@ -319,6 +319,7 @@ GitHub Token 也支持环境变量 `GH_TOKEN` 或 `GITHUB_TOKEN`。
 |---|---|
 | 版本号在 Maven 上不存在 | 构建、发布、校验 |
 | 版本号已存在，只改了文档或 `.github` | 跳过 |
+| 版本号已存在，改动的行都是发布插件版本号 | 跳过 |
 | 版本号已存在，但改了会进 jar 的文件 | 不发布，检查标红并列出文件，提醒递增版本号 |
 | 同一次发布里部分坐标存在、部分不存在 | 标红，上次发布中断，需要手动处理 |
 

@@ -14,7 +14,7 @@ class GtoPublishPlugin : Plugin<Project> {
         val pluginVersion = VersionChecker.getPluginVersion()
         if (pluginVersion != null) {
             VersionChecker.checkPluginUpdate(
-                "https://maven.gtodyssey.com/releases",
+                "https://gtodyssey.com/maven/releases",
                 "com.gto",
                 "gtopublishgradleplugin",
                 pluginVersion,

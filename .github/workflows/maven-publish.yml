@@ -132,7 +132,8 @@ jobs:
             echo "版本 $VERSION 已在 Maven 上，跳过发布"
             exit 0
           fi
-          gh api "repos/$GITHUB_REPOSITORY/compare/$BEFORE...$AFTER" --paginate --jq '.files[].filename' | sort -u > "$RUNNER_TEMP/changed.txt"
+          gh api "repos/$GITHUB_REPOSITORY/compare/$BEFORE...$AFTER" > "$RUNNER_TEMP/compare.json"
+          jq -r '.files[].filename' "$RUNNER_TEMP/compare.json" | sort -u > "$RUNNER_TEMP/changed.txt"
           RELEVANT=()
           set -f
           while IFS= read -r f; do
@@ -145,6 +146,19 @@ jobs:
           done < "$RUNNER_TEMP/changed.txt"
           if [ "${#RELEVANT[@]}" -eq 0 ]; then
             echo "版本 $VERSION 已在 Maven 上，本次只改了不进 jar 的文件，跳过发布"
+            exit 0
+          fi
+          PLUGIN_ONLY=true
+          for f in "${RELEVANT[@]}"; do
+            PATCH=$(jq -r --arg f "$f" '.files[] | select(.filename == $f) | .patch // ""' "$RUNNER_TEMP/compare.json")
+            CHANGED=$(printf '%s\n' "$PATCH" | grep -E '^[+-]' | grep -vE '^(\+\+\+|---) ' || true)
+            if [ -z "$CHANGED" ] || printf '%s\n' "$CHANGED" | grep -qvi 'gtopublish'; then
+              PLUGIN_ONLY=false
+              break
+            fi
+          done
+          if $PLUGIN_ONLY; then
+            echo "版本 $VERSION 已在 Maven 上，本次只升级了发布插件，跳过发布"
             exit 0
           fi
           {
