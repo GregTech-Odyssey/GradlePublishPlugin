@@ -20,8 +20,8 @@ abstract class GtoPublishExtension {
 
     /**
      * Maven 仓库 URL，可选值:
-     *   "releases" → https://maven.gtodyssey.com/releases
-     *   "private"  → https://maven.gtodyssey.com/private
+     *   "releases" → https://gtodyssey.com/maven/releases
+     *   "private"  → https://gtodyssey.com/maven/private
      */
     abstract val mavenRepoUrl: Property<String>
 
@@ -69,8 +69,8 @@ abstract class GtoPublishExtension {
 
     companion object {
         private val REPO_URL_MAP = mapOf(
-            "releases" to "https://maven.gtodyssey.com/releases",
-            "private" to "https://maven.gtodyssey.com/private"
+            "releases" to "https://gtodyssey.com/maven/releases",
+            "private" to "https://gtodyssey.com/maven/private"
         )
 
         private val RELATION_TYPE_MAP = mapOf(

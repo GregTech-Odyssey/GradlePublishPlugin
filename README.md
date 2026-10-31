@@ -26,14 +26,14 @@
 // settings.gradle
 pluginManagement {
     repositories {
-        maven { url 'https://maven.gtodyssey.com/releases' }
+        maven { url 'https://gtodyssey.com/maven/releases' }
         gradlePluginPortal()
     }
 }
 
 // build.gradle
 plugins {
-    id 'com.gto.gtopublishgradleplugin' version '1.0.26'
+    id 'com.gto.gtopublishgradleplugin' version '1.0.28'
 }
 ```
 
@@ -109,14 +109,14 @@ gtoPublish {
 
 | 简写 | 实际 URL |
 |---|---|
-| `releases` | `https://maven.gtodyssey.com/releases` |
-| `private` | `https://maven.gtodyssey.com/private` |
+| `releases` | `https://gtodyssey.com/maven/releases` |
+| `private` | `https://gtodyssey.com/maven/private` |
 
 本插件会自动将 modLoader(小写) 和 MC 版本编入 archivesName，所有文件名统一：
 
 `{repoUrl}/{group}/{name}-{modLoader}-{mcVersion}/{version}/{name}-{modLoader}-{mcVersion}-{version}.jar`
 
-例如：`https://maven.gtodyssey.com/releases/com/gto/registrylib-neoforge-26.1/7.0.8/registrylib-neoforge-26.1-7.0.8.jar`
+例如：`https://gtodyssey.com/maven/releases/com/gto/registrylib-neoforge-26.1/7.0.8/registrylib-neoforge-26.1-7.0.8.jar`
 
 本地 JAR：`build/libs/registrylib-neoforge-26.1-7.0.8.jar`
 
@@ -143,7 +143,7 @@ publishing {
     repositories {
         maven {
             name = 'gtodysseyRepository'
-            url = 'https://maven.gtodyssey.com/releases'
+            url = 'https://gtodyssey.com/maven/releases'
             credentials {
                 username = findProperty('gtodysseyRepositoryUsername')
                 password = findProperty('gtodysseyRepositoryPassword')
@@ -174,7 +174,7 @@ gtoPublish {
 > **注意**：`publishing {}` 块中的仓库 `name` 必须与 `gtoPublish.mavenRepoName` 一致（默认 `gtodysseyRepository`）。
 
 发布后，所有文件名统一为 `my-mod-neoforge-26.1-0.0.2.jar`：
-`https://maven.gtodyssey.com/releases/com/gto/my-mod-neoforge-26.1/0.0.2/my-mod-neoforge-26.1-0.0.2.jar`
+`https://gtodyssey.com/maven/releases/com/gto/my-mod-neoforge-26.1/0.0.2/my-mod-neoforge-26.1-0.0.2.jar`
 
 GitHub Release tag/name：`neoforge-26.1-0.0.2`
 
@@ -199,7 +199,7 @@ publishing {
     repositories {
         maven {
             name = 'gtodysseyRepository'
-            url = 'https://maven.gtodyssey.com/releases'
+            url = 'https://gtodyssey.com/maven/releases'
             credentials {
                 username = findProperty('gtodysseyRepositoryUsername')
                 password = findProperty('gtodysseyRepositoryPassword')
